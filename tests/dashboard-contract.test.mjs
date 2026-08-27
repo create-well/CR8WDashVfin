@@ -65,7 +65,9 @@ test('uses typed Source Flow permission data and names the complete steward rost
     assert.match(permissions, new RegExp(`['"]${steward}['"]`));
   }
   assert.match(permissions, /trim\(\)\.toLowerCase\(\)/);
-  assert.match(context, /canViewSourceFlow:\s*canStewardSourceFlow\(chatActiveUser\)/);
+  assert.match(context, /canViewSourceFlow:\s*canStewardSourceFlow\(initialProfile\)/);
+  assert.doesNotMatch(context, /canViewSourceFlow:\s*canStewardSourceFlow\(chatActiveUser\)/);
+  assert.match(context, /chatActiveUser may be a remapped display identity/);
   assert.match(context, /careConsent:\s*false/);
 });
 

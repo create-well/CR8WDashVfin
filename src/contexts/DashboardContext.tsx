@@ -541,8 +541,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     permissions: {
       // Default closed: Care actions stay unavailable until consent is explicitly recorded.
       careConsent: false,
-      // Source Flow remains visible only to named, case-insensitively matched stewards.
-      canViewSourceFlow: canStewardSourceFlow(chatActiveUser),
+      // Authorize against the stored profile: chatActiveUser may be a remapped display identity.
+      canViewSourceFlow: canStewardSourceFlow(initialProfile),
       sourceFlowStewards: SOURCE_FLOW_STEWARDS,
     },
   };
