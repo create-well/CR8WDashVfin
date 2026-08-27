@@ -136,7 +136,9 @@ def sync_sops(root, headers, apply):
 
 
 def sync_raci(root, headers, apply):
-    cfg=json.loads((root/'raci_matrix.json').read_text(encoding='utf-8'))
+    cfg_path = root/'raci_matrix.json'
+    if not cfg_path.exists(): cfg_path = root/'tools'/'notion-sync'/'raci_matrix.json'
+    cfg=json.loads(cfg_path.read_text(encoding='utf-8'))
     pages=query_all(COLLAB_DS, headers); by_name={prop_plain(p,'Name'):p for p in pages}
     for person in cfg['people']:
         name=person['name']; existing=by_name.get(name)
