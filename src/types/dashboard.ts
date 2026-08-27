@@ -13,7 +13,12 @@ export type {
 export type SyncStatus = 'loading' | 'fresh' | 'stale' | 'failed';
 
 export interface DashboardPermissions {
+  /** Explicit consent is required before opening or tending a Care channel. */
   careConsent: boolean;
+  /** Authorized stewards may view and tend Source Flow. */
+  canViewSourceFlow: boolean;
+  /** Visible, auditable roster used by Source Flow permission messaging. */
+  sourceFlowStewards: readonly string[];
 }
 
 export interface DashboardPayload {

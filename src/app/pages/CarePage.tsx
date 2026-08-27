@@ -11,7 +11,7 @@ export function CarePage() {
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' :
     data.syncStatus === 'stale' ? 'stale' :
-    (data.coFlowDates.length === 0 && data.coFlowCheckins.length === 0) ? 'empty' : 'fresh';
+    (data.coFlowDates.length === 0 && data.coFlowCheckins.length === 0) ? 'empty' : 'ready';
 
   return (
     <ViewShell
@@ -19,7 +19,7 @@ export function CarePage() {
       emptyTitle="No care loop scheduled"
       emptyBody="The next right invitation will appear here when it's time. Nothing to act on right now."
       restrictedTitle="Care Loop — consent required"
-      restrictedBody="Contact CTAs and scheduling are suppressed until consent is confirmed. Reach out directly to update your settings."
+      restrictedBody="Care outreach, channel opening, and scheduling actions remain unavailable until explicit consent is confirmed."
       onRetry={actions.retrySync}
     >
       <CoFlowD8sView

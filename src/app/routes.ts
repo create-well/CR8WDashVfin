@@ -18,6 +18,8 @@ export const router = createBrowserRouter([
       { path: 'care',        Component: CarePage },
       { path: 'flows',       Component: FlowsPage },
       { path: 'money',       Component: MoneyPage },
+      // The legacy path remains stable; the alias supports the user-facing The Source language.
+      { path: 'source',       Component: MoneyPage },
       { path: 'decisions',   Component: DecisionsPage },
       { path: 'system',      Component: SystemPage },
     ],

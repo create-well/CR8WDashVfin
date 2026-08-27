@@ -10,7 +10,7 @@ export function FlowsPage() {
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' :
     data.syncStatus === 'stale' ? 'stale' :
-    (data.workshops.length === 0 && data.workshopPrograms.length === 0) ? 'empty' : 'fresh';
+    (data.workshops.length === 0 && data.workshopPrograms.length === 0) ? 'empty' : 'ready';
 
   return (
     <ViewShell

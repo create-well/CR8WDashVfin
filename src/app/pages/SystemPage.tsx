@@ -98,8 +98,16 @@ export function SystemPage() {
     failed: 'Sync failed',
   }[data.syncStatus];
 
+  const state = data.syncStatus === 'loading'
+    ? 'loading'
+    : data.syncStatus === 'failed'
+    ? 'failed'
+    : data.syncStatus === 'stale'
+    ? 'stale'
+    : 'ready';
+
   return (
-    <ViewShell state="fresh">
+    <ViewShell state={state} onRetry={actions.retrySync}>
       <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 48px' }}>
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
@@ -138,9 +146,14 @@ export function SystemPage() {
             status={data.lastSynced ? 'neutral' : 'warn'}
           />
           <HealthRow
-            label="Permissions: Care consent"
-            value={data.permissions.careConsent ? 'Granted' : 'Not granted'}
+            label="Care consent"
+            value={data.permissions.careConsent ? 'Explicitly granted' : 'Consent required'}
             status={data.permissions.careConsent ? 'ok' : 'warn'}
+          />
+          <HealthRow
+            label="Source Flow visibility"
+            value={data.permissions.canViewSourceFlow ? 'Authorized steward' : 'Restricted'}
+            status={data.permissions.canViewSourceFlow ? 'ok' : 'warn'}
           />
         </div>
 
@@ -205,7 +218,7 @@ export function SystemPage() {
             { path: '/moves', label: 'Moves: Now', emoji: '⛲️' },
             { path: '/care', label: 'Care Loop', emoji: '🫧' },
             { path: '/flows', label: 'FLOWS', emoji: '🛠️' },
-            { path: '/money', label: 'Money, Real Only', emoji: '💰' },
+            { path: '/money', label: 'The Source · Source Flow', emoji: '✦' },
             { path: '/decisions', label: 'Decision Queue', emoji: '⚡' },
             { path: '/system', label: 'System Health', emoji: '🔧' },
           ].map(route => (
@@ -226,8 +239,8 @@ export function SystemPage() {
           borderRadius: 12, padding: '4px 16px',
         }}>
           <HealthRow label="Router" value="react-router v7 · data mode" status="ok" />
-          <HealthRow label="Data layer" value="DashboardContext · typed payload" status="ok" />
-          <HealthRow label="API" value="Supabase edge functions" status="neutral" />
+          <HealthRow label="Data layer" value="DashboardPayload · typed context boundary" status="ok" />
+          <HealthRow label="Module data access" value="Host-provided; no direct service calls from pages" status="ok" />
           <HealthRow label="Env" value={import.meta.env.MODE || 'production'} status="neutral" />
         </div>
       </div>
