@@ -47,6 +47,12 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python tools/notion-sync/sync_notion_ths.py --root .
 
+      - name: Apply synchronization
+        if: ${{ github.event_name == 'schedule' || inputs.apply == true }}
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python tools/notion-sync/sync_notion_ths.py --root . --apply
+
       - name: Check live Notion metadata drift
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -59,9 +65,3 @@ jobs:
           name: notion-drift-report-${{ github.run_id }}
           path: notion-drift-report.json
           if-no-files-found: ignore
-
-      - name: Apply synchronization
-        if: ${{ github.event_name == 'schedule' || inputs.apply == true }}
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-        run: python tools/notion-sync/sync_notion_ths.py --root . --apply
