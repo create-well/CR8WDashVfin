@@ -121,7 +121,7 @@ def sync_sops(root, headers, apply):
     files=sorted((root/'sops').glob('*.md')) if (root/'sops').exists() else sorted(root.glob('**/*.md'))
     files=[p for p in files if 'node_modules' not in p.parts and not p.name.startswith('README')]
     for path in files:
-        raw=path.read_text(encoding='utf-8'); meta, body=parse_frontmatter(raw); name=title_from_md(path, body)
+        raw=path.read_text(encoding='utf-8'); meta, body=parse_frontmatter(raw); name=meta.get('notion_title') or title_from_md(path, body)
         domain=meta.get('domain','Operations'); owner=meta.get('owner','Monica'); raw_state=meta.get('status','DRAFT'); state={'APPROVED':'Active','DRAFT':'Draft','REVIEW':'Needs Update','SUPERSEDED':'Archived','ARCHIVED':'Archived'}.get(raw_state.upper(), 'Draft'); frequency=meta.get('frequency','As Needed'); reviewed=meta.get('last_reviewed','')
         properties={'Procedure':title(name),'Owner':rich(owner),'Domain':select(domain),'Status':status(state),'Frequency':select(frequency),'Source Path':rich(str(path.relative_to(root))),'Source Version':rich(meta.get('version','unversioned')),'Source Hash':rich(sha256(path))}
         if reviewed: properties['Last Reviewed']=date(reviewed)
