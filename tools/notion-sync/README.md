@@ -55,3 +55,9 @@ Use the scheduled job as a daily reconciliation, not as a high-frequency poller.
 - `validate_metadata.py`: repository metadata and version checks.
 - `verify_manifest.py`: optional SHA-256 manifest verification.
 - `.github/workflows/notion-sync.yml`: scheduled/manual synchronization.
+
+## Failure alerts
+
+`.github/workflows/workflow-failure-alert.yml` listens for completed failures from the metadata check and Notion sync workflows. It uses the built-in `GITHUB_TOKEN` with only `actions: read`, `contents: read`, and `issues: write` permissions. The first failure opens a labeled issue named `Workflow failure: <workflow name>`; subsequent failures update that same open issue with a new run link instead of creating an issue storm. After a later run succeeds, close the alert issue after reviewing the root cause.
+
+The alert intentionally uses GitHub Issues rather than email or chat so it requires no additional secret. Repository administrators should ensure Issues are enabled and that the workflow is allowed to create issues. If the team later needs email or Slack delivery, add it as a separate notification layer rather than broadening this workflow's permissions.
