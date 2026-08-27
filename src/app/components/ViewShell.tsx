@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ViewState = 'loading' | 'empty' | 'stale' | 'failed' | 'restricted';
+export type ViewState = 'loading' | 'empty' | 'ready' | 'stale' | 'failed' | 'restricted';
 
 interface ViewShellProps {
   state: ViewState;
@@ -158,7 +158,7 @@ export function ViewShell({
     );
   }
 
-  // stale: show content with a banner above
+  // ready renders content directly; stale keeps content visible with a caution banner.
   return (
     <>
       {state === 'stale' && (

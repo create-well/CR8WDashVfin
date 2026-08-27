@@ -11,6 +11,7 @@ import {
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
+import { SOURCE_FLOW_STEWARDS, canStewardSourceFlow } from '../lib/dashboardPermissions';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -538,7 +539,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     syncStatus: computedSyncStatus,
     lastSynced,
     permissions: {
-      careConsent: true,
+      // Default closed: Care actions stay unavailable until consent is explicitly recorded.
+      careConsent: false,
+      // Source Flow remains visible only to named, case-insensitively matched stewards.
+      canViewSourceFlow: canStewardSourceFlow(chatActiveUser),
+      sourceFlowStewards: SOURCE_FLOW_STEWARDS,
     },
   };
 
