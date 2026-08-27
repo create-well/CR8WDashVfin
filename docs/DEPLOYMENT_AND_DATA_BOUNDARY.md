@@ -29,3 +29,5 @@ Every route consumes the typed dashboard context. Page components must not make 
 ## Deployment procedure
 
 Install dependencies with npm, run `npm test` and `npm run build`, then review the Vercel preview before promoting a validated `main` commit. No access token, client secret, Supabase service-role key, environment file, or deployment payload may be committed to Git.
+
+If Vercel blocks a Git-sourced deployment because it cannot attribute a commit author, connect the author’s GitHub account to the Vercel account and push a small documentation-only follow-up commit. Vercel requires a fresh commit before it will retry a blocked deployment; do not use an unreviewed application-code change solely to trigger a redeploy.
