@@ -1,5 +1,6 @@
 ---
 Document ID: THS-CROSS-STORAGE-METADATA
+Notion Title: THS — Cross-Storage Metadata Drift Control
 Status: DRAFT
 Version: v01
 Owner: Monica

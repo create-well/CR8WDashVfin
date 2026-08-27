@@ -1,5 +1,6 @@
 ---
 Document ID: THS-CANONICAL-SOP-GOV-RACI
+Notion Title: THS — Canonical SOP Governance & RACI
 Status: APPROVED
 Version: v01
 Owner: Monica
