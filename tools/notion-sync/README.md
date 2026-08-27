@@ -14,9 +14,9 @@ The local hook runs the fast metadata validator. The CI workflow runs the same v
 
 ## GitHub setup
 
-Create a GitHub Actions environment named `notion-production`. Store the Notion integration token as an environment secret named `NOTION_TOKEN`; do not commit it, put it in a file, or pass it on a command line. The integration must be shared with the target Operations and Team & Collaborators databases and have read/update content capabilities.
+Use the existing GitHub Actions environment named `Production`. Store the Notion integration token as an environment secret named `NOTION_TOKEN`; do not commit it, put it in a file, or pass it on a command line. The integration must be shared with the target Operations and Team & Collaborators databases and have read/update content capabilities.
 
-Protect the default branch and require the metadata-drift check before merge. Keep the `notion-production` environment reviewer-gated at first. This prevents an accidental branch or malformed export from writing into the operational index while the team calibrates the mapping.
+Protect the default branch and require the metadata-drift check before merge. Keep the `Production` environment reviewer-gated at first. This prevents an accidental branch or malformed export from writing into the operational index while the team calibrates the mapping.
 
 ## Sync commands
 
