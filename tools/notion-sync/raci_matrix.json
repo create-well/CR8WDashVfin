@@ -1,0 +1,14 @@
+{
+  "version": "v01-working",
+  "source": "THS_Core_Studio_Ops_RACI_Matrix.xlsx",
+  "people": [
+    {"name":"Walbert","notion_role":"Advisor","type":"Partner","status":"Active","skills":["Strategy","Design"],"assignments":["D01 A: Opportunity / partnership","D04 R: Creative direction / final delivery"]},
+    {"name":"Monica","notion_role":"Operator","type":"Partner","status":"Active","skills":["Notion","Strategy","Automation"],"assignments":["D02 A: Proposal / pricing / terms","D03 R: Scope / schedule / delivery","D06 A: Contractor / budget / payment release"]},
+    {"name":"Ayce","notion_role":"Designer","type":"Partner","status":"Active","skills":["Design","Video"],"assignments":["D04 A: Creative direction / final delivery"]},
+    {"name":"Christine","notion_role":"Operator","type":"Partner","status":"Active","skills":["Notion","Strategy"],"assignments":["D03 A: Scope / schedule / delivery","D06 R: Contractor / budget / payment release"]},
+    {"name":"Zwei","notion_role":"Strategist","type":"Partner","status":"Active","skills":["Strategy","Design"],"assignments":["D01-D06 C: Cross-gate consultation"]},
+    {"name":"Andrew","notion_role":"Strategist","type":"Partner","status":"Active","skills":["Strategy","Writing"],"assignments":["D05 R: Research method / integrity / publication"]},
+    {"name":"Sarah","notion_role":"Advisor","type":"Partner","status":"Active","skills":["Strategy"],"assignments":["D05 A: Research method / integrity / publication"]},
+    {"name":"Jerjon","notion_role":"Other","type":"Partner","status":"Active","skills":[],"assignments":["D02 R: Proposal / pricing / terms","D06 C: Contractor / budget / payment release"]}
+  ]
+}

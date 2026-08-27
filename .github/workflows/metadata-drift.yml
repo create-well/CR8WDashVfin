@@ -1,0 +1,16 @@
+name: THS metadata drift check
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  validate-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate canonical document metadata
+        run: python3 tools/notion-sync/validate_metadata.py --root .
+      - name: Verify manifest is valid JSON
+        run: python3 -m json.tool tools/notion-sync/raci_matrix.json >/dev/null

@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+ROOT="$(git rev-parse --show-toplevel)"
+python3 "$ROOT/tools/notion-sync/validate_metadata.py" --root "$ROOT"
