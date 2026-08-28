@@ -22,10 +22,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     environment: Production
-    # GitHub resolves secrets.NOTION_TOKEN from the repository scope unless an
-    # environment secret with the same name overrides it.
+    # The existing Production secret is named NOTION_CR8WDASHBOARD_KEY;
+    # expose it to the scripts under their stable runtime variable name.
     env:
-      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      NOTION_TOKEN: ${{ secrets.NOTION_CR8WDASHBOARD_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -37,7 +37,7 @@ jobs:
       - name: Verify Notion secret is available
         run: |
           if [ -z "$NOTION_TOKEN" ]; then
-            echo "NOTION_TOKEN is missing from the repository or Production environment; refusing to sync."
+            echo "NOTION_CR8WDASHBOARD_KEY is missing from the Production environment; refusing to sync."
             exit 1
           fi
       - name: Dry-run synchronization
