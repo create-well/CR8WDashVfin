@@ -1,0 +1,61 @@
+name: Governance audit log
+
+on:
+  workflow_dispatch:
+    inputs:
+      since_hours:
+        description: "Lookback window in hours (1-168)"
+        required: false
+        default: "24"
+        type: string
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: governance-audit-log
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Collect governance audit events
+    # This job is intentionally read-only. It does not call any write endpoint.
+    if: github.repository == 'create-well/CR8WDashVfin'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out audit collector
+        uses: actions/checkout@v4
+
+      - name: Set bounded lookback
+        id: window
+        shell: bash
+        env:
+          INPUT_HOURS: ${{ inputs.since_hours || '3' }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$INPUT_HOURS" =~ ^[0-9]+$ ]] || (( INPUT_HOURS < 1 || INPUT_HOURS > 168 )); then
+            echo "since_hours must be an integer from 1 through 168" >&2
+            exit 2
+          fi
+          echo "hours=$INPUT_HOURS" >> "$GITHUB_OUTPUT"
+
+      - name: Collect audit events
+        env:
+          GH_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
+          REPO: create-well/CR8WDashVfin
+          SINCE_HOURS: ${{ steps.window.outputs.hours }}
+          AUDIT_MODE: org-audit
+          OUTPUT: governance-audit.jsonl
+        run: node scripts/github-governance-audit.mjs
+
+      - name: Upload immutable-run evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-audit-${{ github.run_id }}
+          path: governance-audit.jsonl
+          if-no-files-found: warn
+          retention-days: 90
