@@ -22,42 +22,31 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     environment: Production
+    # GitHub resolves secrets.NOTION_TOKEN from the repository scope unless an
+    # environment secret with the same name overrides it.
+    env:
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install API client
         run: python -m pip install --disable-pip-version-check requests
-
       - name: Verify Notion secret is available
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: |
           if [ -z "$NOTION_TOKEN" ]; then
-            echo "NOTION_TOKEN is missing from the Production environment; refusing to sync."
+            echo "NOTION_TOKEN is missing from the repository or Production environment; refusing to sync."
             exit 1
           fi
-
       - name: Dry-run synchronization
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python tools/notion-sync/sync_notion_ths.py --root .
-
       - name: Apply synchronization
         if: ${{ github.event_name == 'schedule' || inputs.apply == true }}
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python tools/notion-sync/sync_notion_ths.py --root . --apply
-
       - name: Check live Notion metadata drift
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python tools/notion-sync/notion_drift_check.py --root . --output notion-drift-report.json
-
       - name: Upload drift report
         if: always()
         uses: actions/upload-artifact@v4
