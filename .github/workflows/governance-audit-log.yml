@@ -44,21 +44,12 @@ jobs:
 
       - name: Collect audit events
         env:
-          AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
-          BUILT_IN_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
           REPO: create-well/CR8WDashVfin
           SINCE_HOURS: ${{ steps.window.outputs.hours }}
+          AUDIT_MODE: org-audit
           OUTPUT: governance-audit.jsonl
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -n "${AUDIT_TOKEN:-}" ]]; then
-            echo "Using organization audit-log coverage."
-            AUDIT_MODE=org-audit GH_TOKEN="$AUDIT_TOKEN" node scripts/github-governance-audit.mjs
-          else
-            echo "::warning::GOVERNANCE_AUDIT_TOKEN is not configured; using reduced repository-events coverage. Configure the secret for organization audit coverage."
-            AUDIT_MODE=repo-events GH_TOKEN="$BUILT_IN_TOKEN" node scripts/github-governance-audit.mjs
-          fi
+        run: node scripts/github-governance-audit.mjs
 
       - name: Upload immutable-run evidence artifact
         if: always()

@@ -1,0 +1,73 @@
+{
+  "repository": "create-well/CR8WDashVfin",
+  "secretName": "GOVERNANCE_AUDIT_TOKEN",
+  "storage": {
+    "preferred": "repository_actions_secret",
+    "scope": "Only create-well/CR8WDashVfin",
+    "environmentSecret": false,
+    "organizationSecret": "Optional only if organization policy supports private repositories; restrict visibility to this repository"
+  },
+  "credential": {
+    "preferredType": "GitHub App installation token or fine-grained credential supported by the organization audit-log endpoint",
+    "fallbackType": "Classic PAT with read:audit_log, issued to an organization owner and approved by organization policy",
+    "ownerRequirement": "The identity must be an organization owner if required by the audit-log endpoint",
+    "repositoryAccess": "Selected repository only where the chosen credential type supports repository restriction",
+    "expirationDays": 30,
+    "rotationOwner": "Platform/Security",
+    "neverAllow": [
+      "repo write or admin",
+      "workflow write",
+      "administration write",
+      "delete_repo",
+      "production cloud or database credentials",
+      "Supabase service-role keys"
+    ]
+  },
+  "permissions": {
+    "classicPat": [
+      "read:audit_log"
+    ],
+    "fineGrainedPat": {
+      "organization": {
+        "administration": "read, if the organization audit-log endpoint exposes this permission for the selected account and plan"
+      },
+      "repository": {
+        "metadata": "read"
+      }
+    },
+    "githubActionsBuiltInToken": {
+      "contents": "read",
+      "purpose": "Repository-events fallback only; it is not equivalent to organization audit-log access"
+    }
+  },
+  "workflowContract": {
+    "fullCoverage": {
+      "requiredSecret": "GOVERNANCE_AUDIT_TOKEN",
+      "auditMode": "org-audit",
+      "tokenSource": "GH_TOKEN sourced from the repository secret"
+    },
+    "fallbackCoverage": {
+      "requiredSecret": false,
+      "auditMode": "repo-events",
+      "tokenSource": "github.token",
+      "warningRequired": true
+    },
+    "mustNotLog": [
+      "GH_TOKEN",
+      "GOVERNANCE_AUDIT_TOKEN",
+      "Authorization headers",
+      "raw secret values"
+    ]
+  },
+  "validation": {
+    "apiProbe": "GET /orgs/create-well/audit-log with a narrow repo phrase and a bounded since timestamp",
+    "workflowCheck": "Confirm full-coverage mode only when the secret is present; otherwise expect an explicit reduced-coverage warning",
+    "rotationCheck": "Revoke the prior credential and confirm the next scheduled run succeeds with the replacement",
+    "incidentTrigger": "Treat an unexpected 401, 403, token-use event, or secret-access event as an investigation signal"
+  },
+  "references": [
+    "https://docs.github.com/en/rest/orgs/orgs#get-the-audit-log-for-an-organization",
+    "https://docs.github.com/actions/security-guides/using-secrets-in-github-actions",
+    "https://docs.github.com/en/actions/reference/security/secure-use"
+  ]
+}
