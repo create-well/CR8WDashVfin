@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:production": "node tests/production-dashboard-integration.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.8",
