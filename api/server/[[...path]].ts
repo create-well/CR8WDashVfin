@@ -13,8 +13,8 @@ import { createClient } from '@supabase/supabase-js';
 // ── Supabase client ───────────────────────────────────────────────────────────
 function sb() {
   const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  if (!url || !key) throw new Error('SUPABASE_URL + SUPABASE_SECRET_KEY must be set');
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
@@ -23,18 +23,21 @@ async function verifyRequest(req: VercelRequest): Promise<boolean> {
   const raw = req.headers.authorization ?? '';
   const token = raw.startsWith('Bearer ') ? raw.slice(7).trim() : '';
   if (!token) return false;
-  const pubKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? '';
-  // Fast path: exact match against the publishable key (hash-login sessions)
-  if (pubKey && token === pubKey) return true;
-  // JWT path: verify as a Supabase user access token
-  if (pubKey) {
-    try {
-      const c = createClient(process.env.SUPABASE_URL!, pubKey, { auth: { persistSession: false } });
-      const { data, error } = await c.auth.getUser(token);
-      if (!error && data.user) return true;
-    } catch { /* fall through */ }
+  const pubKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  // Fail closed: a missing publishable key must never disable the auth gate.
+  if (!pubKey) return false;
+  // Fast path: exact match against the publishable key (hash-login sessions).
+  if (token === pubKey) return true;
+  // JWT path: verify as a Supabase user access token.
+  try {
+    const url = process.env.SUPABASE_URL;
+    if (!url) return false;
+    const c = createClient(url, pubKey, { auth: { persistSession: false } });
+    const { data, error } = await c.auth.getUser(token);
+    return !error && Boolean(data.user);
+  } catch {
+    return false;
   }
-  return !pubKey; // allow when no key configured (dev/preview)
 }
 
 const TABLE = 'kv_store_8dcd9693';
