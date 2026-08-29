@@ -28,3 +28,7 @@ The configured Google OAuth client does not currently accept the deployed dashbo
 2. Replace duplicated `window.location.origin` callback construction with the shared helper in the authorization requests and callback exchange.
 3. Add a deterministic contract test for callback equality and trailing-slash normalization.
 4. Run the test suite, production build, and diff inspection. Report any remaining Google Cloud Console configuration requirement without changing external credentials.
+
+## References
+
+[1] [Google, Using OAuth 2.0 for Web Server Applications](https://developers.google.com/identity/protocols/oauth2/web-server). Google documents that a `redirect_uri_mismatch` occurs when the request value does not match an authorized redirect URI for the supplied client ID.
