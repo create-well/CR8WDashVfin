@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), 'utf8');
+const readOptional = async (file) => {
+  try { return await read(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+};
 
 const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system] = await Promise.all([
   read('src/app/routes.ts'),
@@ -17,6 +20,8 @@ const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, conte
   read('src/app/pages/DecisionsPage.tsx'),
   read('src/app/pages/SystemPage.tsx'),
 ]);
+const canonicalApi = await read('api/server/[[...path]].ts');
+const legacyApi = await readOptional('api/server.ts');
 
 const pageSources = await Promise.all([
   care,
@@ -96,6 +101,14 @@ test('provides detailed Decisions and System surfaces with recovery and consent 
     assert.match(system, new RegExp(label));
   }
   assert.match(system, /Host-provided; no direct service calls from pages/);
+});
+
+test('deploys one canonical API handler and fails closed when publishable auth is unconfigured', () => {
+  assert.equal(legacyApi, null);
+  assert.match(canonicalApi, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(canonicalApi, /SUPABASE_SECRET_KEY/);
+  assert.match(canonicalApi, /if \(!pubKey\) return false/);
+  assert.doesNotMatch(canonicalApi, /return !pubKey/);
 });
 
 test('keeps every dashboard page behind the context boundary without direct service calls', () => {
