@@ -15,9 +15,11 @@
 | `git diff --check` | Passed |
 | Secret exposure | No values logged or committed |
 
-## Unverified in this continuation
+## Fresh Lighthouse evidence
 
-A fresh Lighthouse run against populated Production `/system` has not yet been performed. Prior Lighthouse values were collected during the sync-failure state and are not a valid current baseline for UI decisions.
+A fresh Lighthouse run completed against Production `/system` at `2026-08-29T13:59:12.018Z` with no runtime error. Performance was 79, Accessibility 92, Best Practices 96, and SEO 58. LCP was 3.64 seconds and CLS was 0.16885. These are effectively unchanged from the prior baseline of LCP 3.67 seconds and CLS 0.1689, so the metrics are now current but the performance bottleneck is not resolved. Full redacted evidence is in `.handoff/LIGHTHOUSE_2026-08-29.md`.
+
+The next unverified item is trace-level identification of the LCP element and layout-shift contributors.
 
 ## Required evidence format
 

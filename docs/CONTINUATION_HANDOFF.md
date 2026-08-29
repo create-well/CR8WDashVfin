@@ -78,9 +78,15 @@ Only secret names, ownership, scope, and environment belong in this handoff. Val
 
 If a check fails, capture timestamp, deployment ID, route, status, redacted error class, request ID if present, and the failing boundary. Retry only transient 429/5xx/network failures with bounded exponential backoff and jitter. Treat 4xx auth/configuration failures as non-retryable until configuration is verified. Never advance a sync checkpoint before durable writes succeed. Never log page content, tokens, cookies, or full request bodies.
 
+## Fresh Lighthouse result
+
+A fresh Lighthouse run completed against `https://cr8w-dash-vfin.vercel.app/system` at `2026-08-29T13:59:12.018Z` with no runtime error. Results: Performance 79, Accessibility 92, Best Practices 96, SEO 58, LCP 3.6386 seconds, CLS 0.16885, FCP 2.6177 seconds, and TTI 3.6386 seconds. Compared with the prior failure-state baseline of LCP 3.67 seconds and CLS 0.1689, this is effectively unchanged. The current baseline is recorded in `.handoff/LIGHTHOUSE_2026-08-29.md` and `.handoff/VALIDATION.md`.
+
+The provider routing and secure integration envelope are recorded in `.handoff/PROVIDERS.md`. Notion AI handles operational synthesis, Perplexity Max handles public evidence cross-checks, and Gemini Pro handles implementation/test/performance analysis. All receive redacted context only and require explicit approval for production writes, credential changes, merges, deploy promotions, or Notion mutations.
+
 ## Next single highest-leverage action
 
-Run a fresh Lighthouse audit against the now-populated Production `/system` page, then compare CLS and LCP with the previous failure-state baseline before making any additional UI or performance changes.
+Trace the populated Production `/system` page to identify the LCP element and layout-shift contributors before making any UI or performance code changes.
 
 ## References
 
