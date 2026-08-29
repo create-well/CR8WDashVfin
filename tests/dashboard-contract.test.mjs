@@ -120,6 +120,11 @@ test('exposes the protected notion-sync-runs read route with bounded, ordered fi
   assert.match(canonicalApi, /res\.json\(\{ runs: data \?\? \[\] \}\)/);
 });
 
+test('normalizes slash-delimited query paths for nested routes', () => {
+  assert.match(canonicalApi, /String\(segment\)\.split\(/);
+  assert.match(canonicalApi, /rawPath\.flatMap/);
+});
+
 test('keeps every dashboard page behind the context boundary without direct service calls', () => {
   for (const page of pageSources) {
     assert.match(page, /useDashboard/);

@@ -90,9 +90,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // req.query.path is the catch-all: undefined | string | string[]
-  const pathArr = !req.query.path
+  const rawPath = !req.query.path
     ? []
     : Array.isArray(req.query.path) ? req.query.path : [req.query.path];
+  const pathArr = rawPath.flatMap(segment => String(segment).split('/').filter(Boolean));
 
   const [resource = '', id = '', sub = ''] = pathArr;
   const method = req.method ?? 'GET';
