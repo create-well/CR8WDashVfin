@@ -23,8 +23,8 @@ async function verifyRequest(req: VercelRequest): Promise<boolean> {
   const raw = req.headers.authorization ?? '';
   const token = raw.startsWith('Bearer ') ? raw.slice(7).trim() : '';
   if (!token) return false;
-  const pubKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-  // Fail closed: a missing publishable key must never disable the auth gate.
+  const pubKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  // Fail closed: neither public-key variable may disable the auth gate.
   if (!pubKey) return false;
   // Fast path: exact match against the publishable key (hash-login sessions).
   if (token === pubKey) return true;
