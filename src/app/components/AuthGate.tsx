@@ -19,11 +19,12 @@ import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png'
 
 // ── Supabase browser client (inline config — publishable key is public-safe) ──
 const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
 let _client: SupabaseClient | null = null;
 function client(): SupabaseClient {
   if (!_client) {
+    if (!SUPABASE_PUBLISHABLE_KEY) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not configured');
     _client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: 'cr8w_supabase_auth' },
     });
