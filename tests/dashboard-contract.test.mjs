@@ -7,7 +7,7 @@ const readOptional = async (file) => {
   try { return await read(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 };
 
-const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system] = await Promise.all([
+const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system, apiClient, hubView] = await Promise.all([
   read('src/app/routes.ts'),
   read('src/app/RootLayout.tsx'),
   read('src/app/components/TopNav.tsx'),
@@ -19,6 +19,8 @@ const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, conte
   read('src/app/pages/MoneyPage.tsx'),
   read('src/app/pages/DecisionsPage.tsx'),
   read('src/app/pages/SystemPage.tsx'),
+  read('src/app/components/api.ts'),
+  read('src/app/components/HubView.tsx'),
 ]);
 const canonicalApi = await read('api/server.ts');
 const legacyApi = await readOptional('api/server/[[...path]].ts');
@@ -102,6 +104,13 @@ test('provides detailed Decisions and System surfaces with recovery and consent 
     assert.match(system, new RegExp(label));
   }
   assert.match(system, /Host-provided; no direct service calls from pages/);
+});
+
+test('uses the injected publishable key for every client API request', () => {
+  assert.match(apiClient, /VITE_SUPABASE_PUBLISHABLE_KEY/);
+  assert.doesNotMatch(apiClient, /sb_publishable_[A-Za-z0-9_-]+/);
+  assert.match(hubView, /Bearer \$\{API_KEY\}/);
+  assert.doesNotMatch(hubView, /sb_publishable_[A-Za-z0-9_-]+/);
 });
 
 test('deploys one canonical API handler and fails closed when publishable auth is unconfigured', () => {
