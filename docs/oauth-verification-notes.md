@@ -7,3 +7,7 @@ A direct authorization request using the same client ID and the normalized callb
 Repository evidence: `src/app/App.tsx`, `src/app/components/HubView.tsx`, and `src/app/components/WorkshopsView.tsx` previously derived the callback directly from `window.location.origin`, producing the no-slash value shown in the screenshot. The patch centralizes callback normalization and sends the slash-terminated value consistently.
 
 Remaining external requirement: an authorized Google Cloud project administrator must add the exact production callback `https://cr8w-dash-vfin.vercel.app/` to the OAuth client's Authorized redirect URIs, or replace the client ID with the intended OAuth client if this ID belongs to another project. Do not change Google Cloud credentials without explicit access and confirmation.
+
+## Deployment status
+
+The first preview for `fix/google-oauth-redirect-uri` was created from an unverified noreply commit author and is `BLOCKED` before build execution. The authenticated GitHub account is `monnylog` with verified email `mb@tablante.com`, matching the repository's prior verified production commits. A documentation-only follow-up commit will use that verified repository-local author identity to allow Vercel to retry the preview, without rewriting history or changing application behavior.
