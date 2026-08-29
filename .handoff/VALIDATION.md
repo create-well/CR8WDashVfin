@@ -12,7 +12,9 @@
 | Source edits | None. No application source files were changed. |
 | Database or Notion writes | None. |
 | `git diff --check` | Passed before commit. |
+| Vercel preview deployment | Blocked before build; Vercel returned an account-configuration collaboration blocker with no build errors. |
+| GitHub/Vercel attribution check | The prior noreply address was not registered on the authenticated GitHub account; local commits are now configured to use the verified primary GitHub email for future commits. |
 
 The prior recorded baseline remains Performance 78, Accessibility 92, Best Practices 96, SEO 58, CLS 0.1689, and LCP 3.67 seconds, but it was measured during a sync-failure state and is not compared against a new populated-state audit here.
 
-Checkpoint commit: `bbb419f` (`chore(handoff): record blocked system audit state`).
+Checkpoint commits: `36f58b5` (`chore(handoff): record blocked system audit state`) and `e738659` (`fix(sync): route client requests through canonical API handler`).
