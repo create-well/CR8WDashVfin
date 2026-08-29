@@ -20,8 +20,8 @@ const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, conte
   read('src/app/pages/DecisionsPage.tsx'),
   read('src/app/pages/SystemPage.tsx'),
 ]);
-const canonicalApi = await read('api/server/[[...path]].ts');
-const legacyApi = await readOptional('api/server.ts');
+const canonicalApi = await read('api/server.ts');
+const legacyApi = await readOptional('api/server/[[...path]].ts');
 
 const pageSources = await Promise.all([
   care,
