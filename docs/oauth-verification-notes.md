@@ -11,3 +11,7 @@ Remaining external requirement: an authorized Google Cloud project administrator
 ## Deployment status
 
 The first preview for `fix/google-oauth-redirect-uri` was created from an unverified noreply commit author and is `BLOCKED` before build execution. The authenticated GitHub account is `monnylog` with verified email `mb@tablante.com`, matching the repository's prior verified production commits. A documentation-only follow-up commit will use that verified repository-local author identity to allow Vercel to retry the preview, without rewriting history or changing application behavior.
+
+## Final preview verification
+
+The latest Vercel preview for commit `5dba225` reached `READY` at `cr8w-dash-vfin-z8mj7xl6p-monnylog.vercel.app`. Its root HTML returned HTTP 200, and its JavaScript bundle returned HTTP 200 with the canonical production callback literal `https://cr8w-dash-vfin.vercel.app/` present. Production remains unchanged until the branch is merged.
