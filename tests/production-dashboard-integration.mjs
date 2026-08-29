@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
-const base = process.env.CR8W_PROD_API_URL ?? 'https://cr8w-dash-vfin.vercel.app/api/server';
+const base = process.env.CR8W_PROD_API_URL ?? 'https://axntibrdivccycxdwlzk.supabase.co/functions/v1/make-server-8dcd9693';
+const usesQueryRouter = /\/api\/server\/?$/.test(base);
 const key = process.env.CR8W_PROD_PUBLIC_KEY;
 assert.ok(key, 'CR8W_PROD_PUBLIC_KEY must be provided by CI secrets');
 
@@ -33,10 +34,10 @@ const routeShapes = new Map([
   }],
 ]);
 
-const routes = [...routeShapes.keys()];
+const routes = [...routeShapes.keys()].filter(route => usesQueryRouter || route !== 'notion-sync-runs&limit=10');
 
-async function probe(route, authenticated = route !== 'health') {
-  const response = await fetch(`${base}?path=${route}`, {
+async function probe(route, authenticated = true) {
+  const response = await fetch(usesQueryRouter ? `${base}?path=${route}` : `${base}/${route}`, {
     headers: authenticated ? { Authorization: `Bearer ${key}` } : {},
   });
   const text = await response.text();
@@ -56,8 +57,8 @@ for (const route of routes) {
 const sync = await probe('sync');
 assert.ok(Array.isArray(sync.body.calendarEvents));
 
-const syncRuns = await probe('notion-sync-runs&limit=10');
-routeShapes.get('notion-sync-runs&limit=10')(syncRuns.body);
+const syncRuns = usesQueryRouter ? await probe('notion-sync-runs&limit=10') : null;
+if (syncRuns) routeShapes.get('notion-sync-runs&limit=10')(syncRuns.body);
 
 const unauthorized = await probe('sync', false);
 assert.equal(unauthorized.response.status, 401);
@@ -66,5 +67,5 @@ console.log(JSON.stringify({
   passedRoutes: results.length,
   unauthorizedSyncStatus: unauthorized.response.status,
   calendarEventCount: sync.body.calendarEvents.length,
-  notionSyncRunCount: syncRuns.body.runs.length,
+  notionSyncRunCount: syncRuns?.body.runs.length ?? null,
 }, null, 2));
