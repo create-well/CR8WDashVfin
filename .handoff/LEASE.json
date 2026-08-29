@@ -1,0 +1,11 @@
+{
+  "actor": "Manus",
+  "provider": "Manus",
+  "branch": "fix/notion-source-sync",
+  "scope": "redacted handoff and implementation-plan reconciliation only",
+  "started_at": "2026-08-29",
+  "expires_at": "2026-08-30",
+  "secret_values_included": false,
+  "notion_mutations": false,
+  "database_mutations": false
+}
