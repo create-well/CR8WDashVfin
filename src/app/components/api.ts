@@ -4,32 +4,26 @@ export const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string 
 
 // Pick API base at runtime so the same build works everywhere:
 //   • VITE_API_BASE env var  → explicit override (highest priority)
-//   • Vercel / custom domain → same-origin /api/server route
-//   • Figma Make preview     → must use absolute Supabase URL
+//   • default                → the deployed Supabase edge function
+// The edge function is the server-side data boundary and works from Vercel,
+// custom domains, and local/preview origins without a same-origin rewrite.
+const SUPABASE_FUNCTION_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-8dcd9693`;
+
 function resolveApiBase(): string {
-  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE as string;
-  const host = typeof window !== 'undefined' ? window.location.hostname : '';
-  const onVercelOrDomain =
-    host.endsWith('.vercel.app') ||
-    host === 'createwell.monnyfest.co' ||
-    host === 'localhost' ||
-    host === '127.0.0.1';
-  if (onVercelOrDomain) return '/api/server';
-  // Figma Make preview iframe — relative URLs don't resolve here
-  // Absolute Vercel URL — works from any origin including Figma Make preview.
-  // Override with VITE_API_BASE env var if you use a custom domain or alias.
-  return 'https://cr8w-home-v2.vercel.app/api/server';
+  return (import.meta.env.VITE_API_BASE as string | undefined) ?? SUPABASE_FUNCTION_BASE;
 }
 
 export const API_BASE = resolveApiBase();
 
-// The canonical Vercel handler is a single /api/server function that dispatches
-// through the `path` query parameter. Keep this routing contract in one place
-// so reads, writes, and OAuth helpers cannot drift into a missing path route.
+// Keep URL construction centralized. The legacy Vercel handler override uses
+// query routing; the default edge-function path uses ordinary URL segments.
 export function apiUrl(path: string): string {
   const route = path.replace(/^\/+/, '');
-  const separator = API_BASE.includes('?') ? '&' : '?';
-  return `${API_BASE}${separator}path=${encodeURIComponent(route).replace(/%2F/g, '/')}`;
+  if (/\/api\/server\/?$/.test(API_BASE)) {
+    const separator = API_BASE.includes('?') ? '&' : '?';
+    return `${API_BASE}${separator}path=${encodeURIComponent(route).replace(/%2F/g, '/')}`;
+  }
+  return `${API_BASE}/${route}`;
 }
 
 // Auth header: required by Supabase edge function; Vercel routes ignore it.
