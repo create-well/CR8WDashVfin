@@ -7,7 +7,7 @@ const readOptional = async (file) => {
   try { return await read(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 };
 
-const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system] = await Promise.all([
+const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system, oauthConfig, appSource, hubSource, workshopsSource] = await Promise.all([
   read('src/app/routes.ts'),
   read('src/app/RootLayout.tsx'),
   read('src/app/components/TopNav.tsx'),
@@ -19,6 +19,10 @@ const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, conte
   read('src/app/pages/MoneyPage.tsx'),
   read('src/app/pages/DecisionsPage.tsx'),
   read('src/app/pages/SystemPage.tsx'),
+  read('src/app/components/data.ts'),
+  read('src/app/App.tsx'),
+  read('src/app/components/HubView.tsx'),
+  read('src/app/components/WorkshopsView.tsx'),
 ]);
 const canonicalApi = await read('api/server.ts');
 const legacyApi = await readOptional('api/server/[[...path]].ts');
@@ -102,6 +106,18 @@ test('provides detailed Decisions and System surfaces with recovery and consent 
     assert.match(system, new RegExp(label));
   }
   assert.match(system, /Host-provided; no direct service calls from pages/);
+});
+
+test('uses one canonical Google OAuth redirect URI across authorization and token exchange', () => {
+  assert.match(oauthConfig, /function getGoogleCalendarRedirectUri\(origin: string\)/);
+  assert.match(oauthConfig, /GOOGLE_CALENDAR_PRODUCTION_REDIRECT_URI = ['"]https:\/\/cr8w-dash-vfin\.vercel\.app\/['"]/);
+  assert.match(oauthConfig, /return `\$\{url\.origin\}\/`/);
+  for (const source of [appSource, hubSource, workshopsSource]) {
+    assert.match(source, /getGoogleCalendarRedirectUri\(window\.location\.origin\)/);
+  }
+  assert.doesNotMatch(appSource, /redirect_uri: window\.location\.origin/);
+  assert.doesNotMatch(hubSource, /const REDIRECT_URI = window\.location\.origin/);
+  assert.doesNotMatch(workshopsSource, /const REDIRECT_URI = window\.location\.origin/);
 });
 
 test('deploys one canonical API handler and fails closed when publishable auth is unconfigured', () => {

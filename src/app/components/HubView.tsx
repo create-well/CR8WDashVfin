@@ -3,7 +3,7 @@ import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png'
 import { showToast } from './Toast';
 import {
   CALENDAR_EVENTS, PERSONS, getDaysToLaunch, formatTimestamp, capitalize,
-  GCAL_CLIENT_ID,
+  GCAL_CLIENT_ID, getGoogleCalendarRedirectUri,
   type BrainDump, type Announcement
 } from './data';
 import { MBodyWidget } from './MBodyWidget';
@@ -659,7 +659,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
 
   // ── Connect: redirect to Google OAuth (authorization code + PKCE) ──────────
   async function connectGoogleCalendar() {
-    const REDIRECT_URI = window.location.origin;
+    const REDIRECT_URI = getGoogleCalendarRedirectUri(window.location.origin);
     const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events';
 
     // Generate PKCE code_verifier and code_challenge

@@ -4,7 +4,7 @@ import { router } from './routes';
 import { DashboardProvider } from '../contexts/DashboardContext';
 import { AuthGate, isAuthenticated, getStoredProfile, signOut } from './components/AuthGate';
 import { useThemeInit } from './components/ThemeProvider';
-import { GCAL_CLIENT_ID } from './components/data';
+import { GCAL_CLIENT_ID, getGoogleCalendarRedirectUri } from './components/data';
 
 // ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
 (function captureOAuthCode() {
@@ -35,7 +35,7 @@ import { GCAL_CLIENT_ID } from './components/data';
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
         body: JSON.stringify({
           code, code_verifier: codeVerifier,
-          redirect_uri: window.location.origin,
+          redirect_uri: getGoogleCalendarRedirectUri(window.location.origin),
           client_id: GCAL_CLIENT_ID,
         }),
       })

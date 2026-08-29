@@ -335,6 +335,20 @@ export const WELL_GREETINGS: string[] = [
 ];
 
 export const GCAL_CLIENT_ID = '411548888468-3volgsnl2spba4gcfgik620o0al7pq1v.apps.googleusercontent.com';
+export const GOOGLE_CALENDAR_PRODUCTION_REDIRECT_URI = 'https://cr8w-dash-vfin.vercel.app/';
+
+// Google OAuth redirect URIs are exact-match values. Keep the public callback
+// derivation in one place so authorization and token exchange cannot diverge.
+export function getGoogleCalendarRedirectUri(origin: string): string {
+  const normalizedOrigin = origin.trim();
+  if (!normalizedOrigin) throw new Error('Google Calendar OAuth origin is required');
+
+  const url = new URL(normalizedOrigin);
+  if (url.origin === GOOGLE_CALENDAR_PRODUCTION_REDIRECT_URI.slice(0, -1)) {
+    return GOOGLE_CALENDAR_PRODUCTION_REDIRECT_URI;
+  }
+  return `${url.origin}/`;
+}
 
 // ── How We Flow operational constants ─────────────────────────────────────────
 // 7-phase event lifecycle for forum thread categories
