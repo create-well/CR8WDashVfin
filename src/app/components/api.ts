@@ -21,7 +21,16 @@ function resolveApiBase(): string {
   return 'https://cr8w-home-v2.vercel.app/api/server';
 }
 
-const BASE = resolveApiBase();
+export const API_BASE = resolveApiBase();
+
+// The canonical Vercel handler is a single /api/server function that dispatches
+// through the `path` query parameter. Keep this routing contract in one place
+// so reads, writes, and OAuth helpers cannot drift into a missing path route.
+export function apiUrl(path: string): string {
+  const route = path.replace(/^\/+/, '');
+  const separator = API_BASE.includes('?') ? '&' : '?';
+  return `${API_BASE}${separator}path=${encodeURIComponent(route).replace(/%2F/g, '/')}`;
+}
 
 // Auth header: required by Supabase edge function; Vercel routes ignore it.
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
@@ -37,7 +46,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(`${BASE}${path}`, {
+      const res = await fetch(apiUrl(path), {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,

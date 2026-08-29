@@ -7,7 +7,7 @@ const readOptional = async (file) => {
   try { return await read(file); } catch (error) { if (error.code === 'ENOENT') return null; throw error; }
 };
 
-const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system, apiClient, hubView] = await Promise.all([
+const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, context, care, source, decisions, system, apiClient, hubView, app] = await Promise.all([
   read('src/app/routes.ts'),
   read('src/app/RootLayout.tsx'),
   read('src/app/components/TopNav.tsx'),
@@ -21,6 +21,7 @@ const [routes, rootLayout, topNav, viewShell, dashboardTypes, permissions, conte
   read('src/app/pages/SystemPage.tsx'),
   read('src/app/components/api.ts'),
   read('src/app/components/HubView.tsx'),
+  read('src/app/App.tsx'),
 ]);
 const canonicalApi = await read('api/server.ts');
 const legacyApi = await readOptional('api/server/[[...path]].ts');
@@ -111,6 +112,11 @@ test('uses the injected publishable key for every client API request', () => {
   assert.doesNotMatch(apiClient, /sb_publishable_[A-Za-z0-9_-]+/);
   assert.match(hubView, /Bearer \$\{API_KEY\}/);
   assert.doesNotMatch(hubView, /sb_publishable_[A-Za-z0-9_-]+/);
+  assert.match(apiClient, /export function apiUrl\(path: string\)/);
+  assert.match(apiClient, /path=\$\{encodeURIComponent\(route\)/);
+  assert.doesNotMatch(apiClient, /fetch\(`\$\{BASE\}\$\{path\}`/);
+  assert.match(hubView, /apiUrl\('\/calendar-ical-sync'\)/);
+  assert.match(app, /apiUrl\('\/gcal-token-exchange'\)/);
 });
 
 test('deploys one canonical API handler and fails closed when publishable auth is unconfigured', () => {
