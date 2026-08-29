@@ -232,12 +232,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         while ((m = veventRe.exec(text)) !== null) {
           const block = m[1];
           const prop = (name: string) => {
-            const r = new RegExp(String.raw`${name}[^:
-]*:([^
-]+)`);
+            const r = new RegExp(`${name}[^\\r\\n]*:([^\\r\\n]+)`);
             const hit = block.match(r);
-            return hit ? hit[1].replace(/\n/g, '
-').replace(/\,/g, ',').replace(//g, '').trim() : '';
+            return hit ? hit[1].replace(/\n/g, '').replace(/\\,/g, ',').replace(/\r/g, '').trim() : '';
           };
           const rawStart = prop('DTSTART');
           const rawEnd   = prop('DTEND');

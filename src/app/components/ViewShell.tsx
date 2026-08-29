@@ -77,52 +77,59 @@ export function ViewShell({
 
   if (state === 'failed') {
     return (
-      <div style={{
-        padding: pad,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        gap: 12,
-      }}>
-        <div style={{ fontSize: compact ? '1.8rem' : '2.5rem', lineHeight: 1 }}>⚠️</div>
+      <>
         <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: compact ? '0.9rem' : '1.1rem',
-          fontWeight: 600,
-          color: 'var(--cr8w-text, #2D2438)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: compact ? '10px 16px' : '12px 24px',
+          background: 'rgba(214, 93, 93, 0.08)',
+          borderBottom: '1px solid rgba(214, 93, 93, 0.2)',
         }}>
-          {failedTitle}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span aria-hidden="true">⚠️</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: compact ? '0.82rem' : '0.9rem',
+                fontWeight: 600,
+                color: 'var(--cr8w-text, #2D2438)',
+              }}>
+                {failedTitle}
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.72rem',
+                color: 'var(--text-muted, #6B5F7A)',
+                lineHeight: 1.4,
+              }}>
+                {failedBody} Cached content remains visible.
+              </div>
+            </div>
+          </div>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              style={{
+                flexShrink: 0,
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: 'var(--cr8w-primary, #7BA89D)',
+                color: '#fff',
+                fontFamily: 'var(--font-label)',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Retry sync
+            </button>
+          )}
         </div>
-        <div style={{
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.8rem',
-          color: 'var(--text-muted, #6B5F7A)',
-          maxWidth: 300,
-          lineHeight: 1.5,
-        }}>
-          {failedBody}
-        </div>
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            style={{
-              marginTop: 4,
-              padding: '7px 18px',
-              borderRadius: 8,
-              background: 'var(--cr8w-primary, #7BA89D)',
-              color: '#fff',
-              fontFamily: 'var(--font-label)',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Retry sync
-          </button>
-        )}
-      </div>
+        {children}
+      </>
     );
   }
 

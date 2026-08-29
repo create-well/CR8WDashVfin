@@ -145,6 +145,9 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         if (!dataLoadedRef.current) {
           dataLoadedRef.current = true;
           setSyncStatus('failed');
+        } else {
+          // Keep the last successful payload visible while Notion/Supabase recovers.
+          setSyncStatus('stale');
         }
       }
     }
