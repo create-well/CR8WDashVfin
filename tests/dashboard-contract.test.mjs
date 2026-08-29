@@ -38,7 +38,8 @@ test('declares the seven required dashboard routes and preserves the Source alia
     assert.match(routes, new RegExp(`path:\\s*['"]${path}['"]`));
   }
   assert.match(routes, /\{ index:\s*true/);
-  assert.match(routes, /path:\s*'source'.*Component:\s*MoneyPage/);
+  assert.match(routes, /path:\s*'source'.*lazy:/);
+  assert.match(routes, /path:\s*'system'.*lazy:/);
   assert.match(topNav, /label:\s*'This Week'/);
   assert.match(topNav, /label:\s*'Moves'/);
   assert.match(topNav, /label:\s*'Care'/);
@@ -123,6 +124,13 @@ test('exposes the protected notion-sync-runs read route with bounded, ordered fi
 test('normalizes slash-delimited query paths for nested routes', () => {
   assert.match(canonicalApi, /String\(segment\)\.split\(/);
   assert.match(canonicalApi, /rawPath\.flatMap/);
+});
+
+test('restricts API origins and sets baseline response security headers', () => {
+  assert.doesNotMatch(canonicalApi, /Access-Control-Allow-Origin['\"],\s*['\"]\*['\"]/);
+  assert.match(canonicalApi, /CR8W_ALLOWED_ORIGINS/);
+  assert.match(canonicalApi, /X-Content-Type-Options/);
+  assert.match(canonicalApi, /Content-Security-Policy/);
 });
 
 test('keeps every dashboard page behind the context boundary without direct service calls', () => {

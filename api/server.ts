@@ -61,10 +61,31 @@ async function getList(key: string): Promise<any[]> { return parseList(await kvG
 async function setList(key: string, list: any[]): Promise<void> { await kvSet(key, JSON.stringify(list)); }
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-function cors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://cr8w-dash-vfin.vercel.app',
+  'https://createwell.monnyfest.co',
+  'https://cr8w.com',
+];
+
+function allowedOrigins(): string[] {
+  return (process.env.CR8W_ALLOWED_ORIGINS ?? DEFAULT_ALLOWED_ORIGINS.join(','))
+    .split(',')
+    .map(origin => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+}
+
+function cors(req: VercelRequest, res: VercelResponse) {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin.replace(/\/$/, '') : '';
+  if (origin && allowedOrigins().includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 }
 
 // ── Body parser ───────────────────────────────────────────────────────────────
@@ -79,7 +100,7 @@ function readBody(req: VercelRequest): Promise<any> {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res);
+  cors(req, res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   // Auth gate — health endpoint is public; everything else requires a valid token

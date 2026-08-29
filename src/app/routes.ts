@@ -1,27 +1,20 @@
 import { createBrowserRouter } from 'react-router';
 import { RootLayout } from './RootLayout';
-import { ThisWeekPage } from './pages/ThisWeekPage';
-import { MovesPage } from './pages/MovesPage';
-import { CarePage } from './pages/CarePage';
-import { FlowsPage } from './pages/FlowsPage';
-import { MoneyPage } from './pages/MoneyPage';
-import { DecisionsPage } from './pages/DecisionsPage';
-import { SystemPage } from './pages/SystemPage';
 
 export const router = createBrowserRouter([
   {
     path: '/',
     Component: RootLayout,
     children: [
-      { index: true,         Component: ThisWeekPage },
-      { path: 'moves',       Component: MovesPage },
-      { path: 'care',        Component: CarePage },
-      { path: 'flows',       Component: FlowsPage },
-      { path: 'money',       Component: MoneyPage },
+      { index: true, lazy: () => import('./pages/ThisWeekPage').then(module => ({ Component: module.ThisWeekPage })) },
+      { path: 'moves', lazy: () => import('./pages/MovesPage').then(module => ({ Component: module.MovesPage })) },
+      { path: 'care', lazy: () => import('./pages/CarePage').then(module => ({ Component: module.CarePage })) },
+      { path: 'flows', lazy: () => import('./pages/FlowsPage').then(module => ({ Component: module.FlowsPage })) },
+      { path: 'money', lazy: () => import('./pages/MoneyPage').then(module => ({ Component: module.MoneyPage })) },
       // The legacy path remains stable; the alias supports the user-facing The Source language.
-      { path: 'source',       Component: MoneyPage },
-      { path: 'decisions',   Component: DecisionsPage },
-      { path: 'system',      Component: SystemPage },
+      { path: 'source', lazy: () => import('./pages/MoneyPage').then(module => ({ Component: module.MoneyPage })) },
+      { path: 'decisions', lazy: () => import('./pages/DecisionsPage').then(module => ({ Component: module.DecisionsPage })) },
+      { path: 'system', lazy: () => import('./pages/SystemPage').then(module => ({ Component: module.SystemPage })) },
     ],
   },
 ]);
