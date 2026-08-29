@@ -111,6 +111,15 @@ test('deploys one canonical API handler and fails closed when publishable auth i
   assert.doesNotMatch(canonicalApi, /return !pubKey/);
 });
 
+test('exposes the protected notion-sync-runs read route with bounded, ordered fields', () => {
+  assert.match(canonicalApi, /resource === ['\"]notion-sync-runs['\"]/);
+  assert.match(canonicalApi, /from\(['\"]mirror_sync_runs['\"]\)/);
+  assert.match(canonicalApi, /started_at,finished_at,status,flows_count,moves_count,people_count,error/);
+  assert.match(canonicalApi, /ascending:\s*false/);
+  assert.match(canonicalApi, /Math\.min\(Math\.max\(Math\.trunc\(requestedLimit\), 1\), 100\)/);
+  assert.match(canonicalApi, /res\.json\(\{ runs: data \?\? \[\] \}\)/);
+});
+
 test('keeps every dashboard page behind the context boundary without direct service calls', () => {
   for (const page of pageSources) {
     assert.match(page, /useDashboard/);

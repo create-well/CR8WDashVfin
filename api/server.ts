@@ -103,6 +103,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.json({ status: 'ok', runtime: 'vercel' }); return;
     }
 
+    // ── Notion sync runs ───────────────────────────────────────────────────────
+    if (resource === 'notion-sync-runs' && method === 'GET') {
+      const limitParam = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
+      const requestedLimit = Number(limitParam ?? 50);
+      const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 50;
+      const { data, error } = await sb()
+        .from('mirror_sync_runs')
+        .select('id,started_at,finished_at,status,flows_count,moves_count,people_count,error')
+        .order('started_at', { ascending: false })
+        .limit(limit);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.json({ runs: data ?? [] });
+      return;
+    }
+
     // ── Sync ──────────────────────────────────────────────────────────────────
     if (resource === 'sync' && method === 'GET') {
       const KEYS = [
