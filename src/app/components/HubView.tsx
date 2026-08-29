@@ -11,6 +11,7 @@ import { NotesFromTheWell } from './NotesFromTheWell';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
+import { API_KEY } from './api';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -398,7 +399,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         })();
       const res = await fetch(`${apiBase}/calendar-ical-sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Sync failed');
