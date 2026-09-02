@@ -5,24 +5,27 @@ import { WorkshopsView } from '../components/WorkshopsView';
 
 export function FlowsPage() {
   const { data, actions } = useDashboard();
+  const workshops = data.workshops ?? [];
+  const programs = data.workshopPrograms ?? [];
+  const resources = data.workshopResources ?? [];
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' :
     data.syncStatus === 'stale' ? 'stale' :
-    (data.workshops.length === 0 && data.workshopPrograms.length === 0) ? 'empty' : 'ready';
+    (workshops.length === 0 && programs.length === 0) ? 'empty' : 'ready';
 
   return (
     <ViewShell
       state={state}
       emptyTitle="No FLOWS yet"
-      emptyBody="Workshops, programs, and resources will live here. Start by scheduling the first one."
+      emptyBody="Public workshops, programs, and resources will appear here when they are available."
       onRetry={actions.retrySync}
     >
       <WorkshopsView
-        workshops={data.workshops}
-        programs={data.workshopPrograms}
-        resources={data.workshopResources}
+        workshops={workshops}
+        programs={programs}
+        resources={resources}
         onAddWorkshop={actions.addWorkshop}
         onUpdateWorkshop={actions.updateWorkshop}
         onDeleteWorkshop={actions.deleteWorkshop}
