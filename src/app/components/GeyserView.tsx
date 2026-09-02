@@ -9,6 +9,9 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { getGeyserCountdown } from './geyserCountdown';
+
+export { GEYSER_COUNTDOWN_TARGET, getGeyserCountdown } from './geyserCountdown';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -18,9 +21,6 @@ type ForumReply = { id: number; author: string; content: string; ts: string };
 const SEED_POSTS: ForumPost[] = [];
 
 const SEED_REPLIES: Record<number, ForumReply[]> = {};
-
-// Update this for each new Geyser cycle.
-export const GEYSER_COUNTDOWN_TARGET = '2026-04-15';
 
 interface GeyserViewProps {
   onNavigate: (view: string) => void;
@@ -58,48 +58,6 @@ const statusColors: Record<string, { bg: string; color: string; dot: string }> =
   'Exploring': { bg: '#EAF4FC', color: '#3A6A8A', dot: '#A9D6F8' },
   'TBD': { bg: '#F0F0F0', color: '#666', dot: '#A89888' }
 };
-
-function getGeyserCountdown(targetDate = GEYSER_COUNTDOWN_TARGET) {
-  const target = new Date(`${targetDate}T00:00:00`);
-  const now = new Date();
-  const diffMs = target.getTime() - now.getTime();
-  const dayMs = 1000 * 60 * 60 * 24;
-  const formattedTarget = target.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-
-  if (diffMs >= 0) {
-    return {
-      count: Math.ceil(diffMs / dayMs),
-      compactLabel: 'days til we go live',
-      detailLabel: (
-        <>
-          days until
-          <br />
-          {formattedTarget}
-        </>
-      ),
-    };
-  }
-
-  const elapsedDays = Math.floor(Math.abs(diffMs) / dayMs);
-
-  return {
-    count: elapsedDays,
-    compactLabel: elapsedDays === 0 ? 'cycle complete' : 'days since we went live',
-    detailLabel: elapsedDays === 0 ? (
-      <>
-        cycle complete
-        <br />
-        {formattedTarget}
-      </>
-    ) : (
-      <>
-        days since
-        <br />
-        {formattedTarget}
-      </>
-    ),
-  };
-}
 
 // Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {
@@ -244,7 +202,7 @@ export function GeyserView({
 
         <div className="geyser-big-countdown">
           <div className="gbc-num">{geyserCountdown.count}</div>
-          <div className="gbc-label">{geyserCountdown.detailLabel}</div>
+          <div className="gbc-label">{geyserCountdown.detailLabel}<br />{geyserCountdown.targetLabel}</div>
         </div>
 
         {/* Key Dates mini-timeline */}
