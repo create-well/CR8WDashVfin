@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY,
-  getDaysToLaunch, formatDate, capitalize, formatTimestamp,
+  formatDate, capitalize, formatTimestamp,
   PHASE_TAGS, PHASE_META, TASK_ROLES,
   type NoteItem,
 } from './data';
@@ -18,6 +18,9 @@ type ForumReply = { id: number; author: string; content: string; ts: string };
 const SEED_POSTS: ForumPost[] = [];
 
 const SEED_REPLIES: Record<number, ForumReply[]> = {};
+
+// Update this for each new Geyser cycle.
+export const GEYSER_COUNTDOWN_TARGET = '2026-04-15';
 
 interface GeyserViewProps {
   onNavigate: (view: string) => void;
@@ -55,6 +58,48 @@ const statusColors: Record<string, { bg: string; color: string; dot: string }> =
   'Exploring': { bg: '#EAF4FC', color: '#3A6A8A', dot: '#A9D6F8' },
   'TBD': { bg: '#F0F0F0', color: '#666', dot: '#A89888' }
 };
+
+function getGeyserCountdown(targetDate = GEYSER_COUNTDOWN_TARGET) {
+  const target = new Date(`${targetDate}T00:00:00`);
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  const dayMs = 1000 * 60 * 60 * 24;
+  const formattedTarget = target.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  if (diffMs >= 0) {
+    return {
+      count: Math.ceil(diffMs / dayMs),
+      compactLabel: 'days til we go live',
+      detailLabel: (
+        <>
+          days until
+          <br />
+          {formattedTarget}
+        </>
+      ),
+    };
+  }
+
+  const elapsedDays = Math.floor(Math.abs(diffMs) / dayMs);
+
+  return {
+    count: elapsedDays,
+    compactLabel: elapsedDays === 0 ? 'cycle complete' : 'days since we went live',
+    detailLabel: elapsedDays === 0 ? (
+      <>
+        cycle complete
+        <br />
+        {formattedTarget}
+      </>
+    ) : (
+      <>
+        days since
+        <br />
+        {formattedTarget}
+      </>
+    ),
+  };
+}
 
 // Due-soon / overdue helper
 function getDueClass(due_date?: string, status?: string): string {
@@ -149,7 +194,7 @@ export function GeyserView({
       .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
   }, []);
 
-  const daysToLaunch = getDaysToLaunch();
+  const geyserCountdown = getGeyserCountdown();
   const stationList = stations;
   const confirmedStations = stationList.filter(s => s.status === 'Confirmed').length;
   const highPriority = actionItems.filter(t => t.priority === 'high' && t.status !== 'done').length;
@@ -198,8 +243,8 @@ export function GeyserView({
         )}
 
         <div className="geyser-big-countdown">
-          <div className="gbc-num">{daysToLaunch}</div>
-          <div className="gbc-label">days until<br />April 15, 2026</div>
+          <div className="gbc-num">{geyserCountdown.count}</div>
+          <div className="gbc-label">{geyserCountdown.detailLabel}</div>
         </div>
 
         {/* Key Dates mini-timeline */}
@@ -954,8 +999,8 @@ export function GeyserView({
         <div className="geyser-header-subtitle">the launchpad</div>
         <div className="geyser-header-info">
           <div className="geyser-header-countdown">
-            <span className="geyser-countdown-num">{daysToLaunch}</span>
-            <span className="geyser-countdown-label">days til we go live</span>
+            <span className="geyser-countdown-num">{geyserCountdown.count}</span>
+            <span className="geyser-countdown-label">{geyserCountdown.compactLabel}</span>
           </div>
         </div>
       </div>
