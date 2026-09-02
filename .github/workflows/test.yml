@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: node --test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # The existing suite uses Node's built-in test runner and imports only
+      # node: builtins, so no dependency install is required. If a test ever
+      # needs a third-party package, add a step here:
+      #   - name: Install dependencies
+      #     run: npm ci
+      - name: Run tests
+        run: node --test tests/
