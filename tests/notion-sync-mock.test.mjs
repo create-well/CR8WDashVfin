@@ -5,7 +5,7 @@ import { startMockNotionServer, mockNotionUrl } from './mock-notion-database.mjs
 
 function runWorker(env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--experimental-strip-types', 'scripts/notion-sync-worker.ts', '--dry-run', '--limit=1'], {
+    const child = spawn(process.execPath, ['scripts/notion-sync-worker.mjs', '--dry-run', '--limit=1'], {
       cwd: new URL('..', import.meta.url).pathname,
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -33,4 +33,10 @@ test('dry-run syncs one normalized mock page from each source without writes', a
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test('fails closed when the notion api key is missing', async () => {
+  const result = await runWorker({ NOTION_API_KEY: '' });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /NOTION_API_KEY must be set/);
 });
