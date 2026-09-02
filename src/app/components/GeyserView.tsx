@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY,
-  getDaysToLaunch, formatDate, capitalize, formatTimestamp,
+  formatDate, capitalize, formatTimestamp,
   PHASE_TAGS, PHASE_META, TASK_ROLES,
   type NoteItem,
 } from './data';
@@ -9,6 +9,9 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { getGeyserCountdown } from './geyserCountdown';
+
+export { GEYSER_COUNTDOWN_TARGET, getGeyserCountdown } from './geyserCountdown';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -149,7 +152,7 @@ export function GeyserView({
       .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
   }, []);
 
-  const daysToLaunch = getDaysToLaunch();
+  const geyserCountdown = getGeyserCountdown();
   const stationList = stations;
   const confirmedStations = stationList.filter(s => s.status === 'Confirmed').length;
   const highPriority = actionItems.filter(t => t.priority === 'high' && t.status !== 'done').length;
@@ -198,8 +201,8 @@ export function GeyserView({
         )}
 
         <div className="geyser-big-countdown">
-          <div className="gbc-num">{daysToLaunch}</div>
-          <div className="gbc-label">days until<br />April 15, 2026</div>
+          <div className="gbc-num">{geyserCountdown.count}</div>
+          <div className="gbc-label">{geyserCountdown.detailLabel}<br />{geyserCountdown.targetLabel}</div>
         </div>
 
         {/* Key Dates mini-timeline */}
@@ -954,8 +957,8 @@ export function GeyserView({
         <div className="geyser-header-subtitle">the launchpad</div>
         <div className="geyser-header-info">
           <div className="geyser-header-countdown">
-            <span className="geyser-countdown-num">{daysToLaunch}</span>
-            <span className="geyser-countdown-label">days til we go live</span>
+            <span className="geyser-countdown-num">{geyserCountdown.count}</span>
+            <span className="geyser-countdown-label">{geyserCountdown.compactLabel}</span>
           </div>
         </div>
       </div>
