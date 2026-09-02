@@ -11,6 +11,7 @@ const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[]
   { path: '/',           label: 'This Week', emoji: '💧', end: true },
   { path: '/moves',      label: 'Moves',     emoji: '⛲️' },
   { path: '/care',       label: 'Care',      emoji: '🫧' },
+  { path: '/flows',      label: 'FLOWS',     emoji: '🛠️' },
   { path: '/money',      label: 'The Source', emoji: '✦' },
   { path: '/decisions',  label: 'Decisions', emoji: '⚡' },
   { path: '/system',     label: 'System',    emoji: '🔧' },
