@@ -583,7 +583,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
       setGcalEvents(events);
     } catch (e: any) {
       console.error('Google Calendar fetch error:', e);
-      setGcalError(e.message || 'Failed to load events');
+      setGcalError(e.message || 'Failed to load personal events');
     } finally {
       setGcalLoading(false);
       // Clear the fresh-token flag now that we've processed it
@@ -1022,7 +1022,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 fontSize: '1.2rem', fontWeight: 800, color: 'var(--cr8w-text, #2D2438)',
                 fontFamily: "var(--font-display)", lineHeight: 1.1,
                 marginTop: 1, marginBottom: 1,
-              }}>{daysToLaunch} days</div>
+              }}>{daysToLaunch < 0 ? `+${Math.abs(daysToLaunch)}d live` : `${daysToLaunch} days`}</div>
             </MiniCard>
           </div>
         );
@@ -1124,7 +1124,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
             }}
             style={{ accentColor: '#1A73E8', width: 16, height: 16 }}
           />
-          Show my personal events
+          Show personal Google Calendar
           {activeUser && PERSONS[activeUser] && (
             <span style={{
               fontSize: '0.72rem', fontWeight: 500,
@@ -1154,7 +1154,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 </button>
                 {gcalError && (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', marginTop: 6, fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    Personal Calendar: {gcalError}
                   </div>
                 )}
               </>
@@ -1167,7 +1167,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3A7A3A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                  YOUR SCHEDULE{gcalCalendarName ? ` \u00b7 ${gcalCalendarName}` : ''}
+                  YOUR PERSONAL SCHEDULE{gcalCalendarName ? ` · ${gcalCalendarName}` : ''}
                   <button
                     onClick={disconnectGoogleCalendar}
                     style={{
@@ -1187,7 +1187,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   </div>
                 ) : gcalError ? (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', padding: '8px 0', fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    Personal Calendar: {gcalError}
                     <button onClick={connectGoogleCalendar} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#1A73E8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', fontFamily: 'inherit' }}>Reconnect</button>
                   </div>
                 ) : gcalEvents.length === 0 ? (
@@ -1705,7 +1705,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   <span style={{
                     fontFamily: "var(--font-display)", fontSize: '0.92rem',
                     fontWeight: 600, color: 'var(--cr8w-text, #2C1C10)',
-                  }}>📅 next up</span>
+                  }}>📅 next up · community events</span>
                   <span style={{
                     fontFamily: 'var(--font-label)', fontSize: '0.58rem',
                     color: 'var(--text-muted)', fontWeight: 500,

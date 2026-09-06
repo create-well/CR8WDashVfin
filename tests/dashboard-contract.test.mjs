@@ -45,6 +45,7 @@ test('declares the seven required dashboard routes and preserves the Source alia
   assert.match(routes, /path:\s*'system'.*lazy:/);
   assert.match(topNav, /label:\s*'This Week'/);
   assert.match(topNav, /label:\s*'Moves'/);
+  assert.match(topNav, /label:\s*'Flows'/);
   assert.match(topNav, /label:\s*'Care'/);
   assert.match(topNav, /label:\s*'The Source'/);
   assert.match(topNav, /label:\s*'Decisions'/);

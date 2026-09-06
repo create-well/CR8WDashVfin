@@ -10,6 +10,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
   { path: '/',           label: 'This Week', emoji: '💧', end: true },
   { path: '/moves',      label: 'Moves',     emoji: '⛲️' },
+  { path: '/flows',      label: 'Flows',     emoji: '🛠️' },
   { path: '/care',       label: 'Care',      emoji: '🫧' },
   { path: '/money',      label: 'The Source', emoji: '✦' },
   { path: '/decisions',  label: 'Decisions', emoji: '⚡' },

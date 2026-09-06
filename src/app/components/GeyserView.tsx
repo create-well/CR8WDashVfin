@@ -198,8 +198,14 @@ export function GeyserView({
         )}
 
         <div className="geyser-big-countdown">
-          <div className="gbc-num">{daysToLaunch}</div>
-          <div className="gbc-label">days until<br />April 15, 2026</div>
+          <div className="gbc-num">{daysToLaunch < 0 ? `+${Math.abs(daysToLaunch)}` : daysToLaunch}</div>
+          <div className="gbc-label">
+            {daysToLaunch < 0
+              ? <>days since<br />April 15, 2026 launch</>
+              : daysToLaunch === 0
+              ? <>we go live<br />today!</>
+              : <>days until<br />April 15, 2026</>}
+          </div>
         </div>
 
         {/* Key Dates mini-timeline */}
@@ -954,8 +960,12 @@ export function GeyserView({
         <div className="geyser-header-subtitle">the launchpad</div>
         <div className="geyser-header-info">
           <div className="geyser-header-countdown">
-            <span className="geyser-countdown-num">{daysToLaunch}</span>
-            <span className="geyser-countdown-label">days til we go live</span>
+            <span className="geyser-countdown-num">
+              {daysToLaunch < 0 ? `+${Math.abs(daysToLaunch)}` : daysToLaunch}
+            </span>
+            <span className="geyser-countdown-label">
+              {daysToLaunch < 0 ? 'days live & growing' : daysToLaunch === 0 ? 'we go live today' : 'days til we go live'}
+            </span>
           </div>
         </div>
       </div>
