@@ -34,3 +34,44 @@ test('dry-run syncs one normalized mock page from each source without writes', a
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+function runWorkerWithArgs(args, env) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['--experimental-strip-types', 'scripts/notion-sync-worker.ts', ...args], {
+      cwd: new URL('..', import.meta.url).pathname,
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.on('error', reject);
+    child.on('close', code => resolve({ code, stdout, stderr }));
+  });
+}
+
+test('write mode fails closed without NOTION_SYNC_WRITE_APPROVED=true', async () => {
+  const result = await runWorkerWithArgs(['--write'], {
+    NOTION_API_KEY: 'mock-notion-key',
+    NOTION_SYNC_WRITE_APPROVED: 'false',
+  });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Write mode is refused/);
+  assert.equal(result.stdout.trim(), '');
+});
+
+test('missing NOTION_API_KEY fails closed before any network activity', async () => {
+  const server = await startMockNotionServer();
+  try {
+    const result = await runWorker({
+      NOTION_API_KEY: '',
+      NOTION_API_URL: mockNotionUrl(server),
+    });
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /NOTION_API_KEY is required/);
+    assert.equal(result.stdout.trim(), '');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
