@@ -253,8 +253,7 @@ export function DecisionsPage() {
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
-    data.syncStatus === 'failed' ? 'failed' :
-    data.syncStatus === 'stale' ? 'stale' : 'ready';
+    data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
   const pending = decisions.filter(d => d.status === 'pending');
   const decided = decisions.filter(d => d.status === 'decided');
@@ -288,7 +287,7 @@ export function DecisionsPage() {
             textTransform: 'uppercase', letterSpacing: '0.1em',
             color: 'var(--text-muted)', marginBottom: 6,
           }}>
-            Decision Queue
+            Monica's Decision Queue
           </div>
           <h1 style={{
             fontFamily: 'var(--font-display)', fontSize: '1.6rem', fontWeight: 800,
@@ -393,13 +392,14 @@ export function DecisionsPage() {
             textTransform: 'uppercase', letterSpacing: '0.1em',
             color: 'var(--text-muted)', marginBottom: 6,
           }}>
-            How we decide
+            How Monica decides
           </div>
           <div style={{
             fontFamily: 'var(--font-body)', fontSize: '0.78rem',
             color: 'var(--cr8w-text, #2D2438)', lineHeight: 1.6,
           }}>
-            Does this move the work forward, or does it just move the worry? If it is not a clear yes, defer or decline it. Pia’s Care and Source Flow tending remains consent-aware; no channel opens without explicit consent.
+            Does this move the work forward, or does it just move the worry?
+            If it's not a clear yes, it's a defer or a no.
           </div>
         </div>
       </div>

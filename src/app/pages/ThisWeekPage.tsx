@@ -20,7 +20,7 @@ export function ThisWeekPage() {
 
   const state =
     data.syncStatus === 'loading' ? 'loading' :
-    data.syncStatus === 'failed' ? 'failed' : 'ready';
+    data.syncStatus === 'failed' ? 'failed' : 'fresh';
 
   function handleNavigate(view: string) {
     if (view === 'geyser' || view === 'moves') {

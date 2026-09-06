@@ -11,7 +11,6 @@ import { NotesFromTheWell } from './NotesFromTheWell';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
-import { API_KEY, apiUrl } from './api';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -391,9 +390,15 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
     setIcalSyncing(true);
     setIcalSyncMsg('');
     try {
-      const res = await fetch(apiUrl('/calendar-ical-sync'), {
+      const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
+        ?? (() => {
+          const h = window.location.hostname;
+          return (h.endsWith('.vercel.app') || h === 'createwell.monnyfest.co' || h === 'localhost')
+            ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server';
+        })();
+      const res = await fetch(`${apiBase}/calendar-ical-sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Sync failed');

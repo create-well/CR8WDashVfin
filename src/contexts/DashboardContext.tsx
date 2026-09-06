@@ -11,7 +11,6 @@ import {
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
-import { SOURCE_FLOW_STEWARDS, canStewardSourceFlow } from '../lib/dashboardPermissions';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -145,9 +144,6 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         if (!dataLoadedRef.current) {
           dataLoadedRef.current = true;
           setSyncStatus('failed');
-        } else {
-          // Keep the last successful payload visible while Notion/Supabase recovers.
-          setSyncStatus('stale');
         }
       }
     }
@@ -542,11 +538,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     syncStatus: computedSyncStatus,
     lastSynced,
     permissions: {
-      // Default closed: Care actions stay unavailable until consent is explicitly recorded.
-      careConsent: false,
-      // Authorize against the stored profile: chatActiveUser may be a remapped display identity.
-      canViewSourceFlow: canStewardSourceFlow(initialProfile),
-      sourceFlowStewards: SOURCE_FLOW_STEWARDS,
+      careConsent: true,
     },
   };
 

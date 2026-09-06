@@ -20,7 +20,7 @@ export function MovesPage() {
   const state =
     data.syncStatus === 'loading' ? 'loading' :
     data.syncStatus === 'failed' ? 'failed' :
-    data.syncStatus === 'stale' ? 'stale' : 'ready';
+    data.syncStatus === 'stale' ? 'stale' : 'fresh';
 
   const forumNotesForView = data.forum.map(f => ({
     id: f.id, author: f.author, content: f.content, created_at: f.created_at,

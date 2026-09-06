@@ -1,15 +1,14 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { useDashboard } from '../contexts/DashboardContext';
 import { TopNav } from './components/TopNav';
 import { SyncStatusBar } from './components/SyncStatusBar';
+import { MessageDrawer } from './components/MessageDrawer';
+import { WelcomeModal } from './components/WelcomeModal';
 import { DecomprocessFAB } from './components/DecomprocessFAB';
 import { ToastContainer } from './components/Toast';
-
-const MessageDrawer = lazy(() => import('./components/MessageDrawer').then(module => ({ default: module.MessageDrawer })));
-const WelcomeModal = lazy(() => import('./components/WelcomeModal').then(module => ({ default: module.WelcomeModal })));
-const PersonView = lazy(() => import('./components/PersonView').then(module => ({ default: module.PersonView })));
-const AddTaskModal = lazy(() => import('./components/AddTaskModal').then(module => ({ default: module.AddTaskModal })));
+import { PersonView } from './components/PersonView';
+import { AddTaskModal } from './components/AddTaskModal';
 import './cr8w.css';
 
 export function RootLayout() {
@@ -108,9 +107,8 @@ export function RootLayout() {
             >
               ×
             </button>
-            <Suspense fallback={null}>
-              <PersonView
-                key={ui.activePerson}
+            <PersonView
+              key={ui.activePerson}
               person={ui.activePerson}
               onNavigate={() => ui.setActivePerson(null)}
               actionItems={data.tasks}
@@ -120,26 +118,22 @@ export function RootLayout() {
               onAddTask={() => setShowAddTask(true)}
               onUpdateTaskStatus={actions.updateTaskStatus}
               onAddMomentum={() => {}}
-                onAddNote={(content: string, author: string) => actions.addForumPost({ author, content })}
-              />
-            </Suspense>
+              onAddNote={(content: string, author: string) => actions.addForumPost({ author, content })}
+            />
           </div>
         </>
       )}
 
       {showAddTask && (
-        <Suspense fallback={null}>
-          <AddTaskModal
+        <AddTaskModal
           currentPerson={ui.activePerson}
           onAdd={actions.addTask}
-            onClose={() => setShowAddTask(false)}
-          />
-        </Suspense>
+          onClose={() => setShowAddTask(false)}
+        />
       )}
 
-      <Suspense fallback={null}>
-        <MessageDrawer
-          messages={data.messages}
+      <MessageDrawer
+        messages={data.messages}
         onSend={actions.sendMessage}
         onDelete={actions.deleteMessage}
         onUpdate={actions.updateMessage}
@@ -150,9 +144,8 @@ export function RootLayout() {
         onNavigateToPlayD8s={() => { navigate('/care'); }}
         activeAs={ui.chatActiveUser}
         onSetActiveAs={ui.setChatActiveUser}
-          onAddWellNote={actions.addWellNote}
-        />
-      </Suspense>
+        onAddWellNote={actions.addWellNote}
+      />
 
       <button
         className={`scroll-top-btn ${showScrollTop ? 'visible' : ''}`}
@@ -164,12 +157,10 @@ export function RootLayout() {
       </button>
 
       {ui.showWelcome && (
-        <Suspense fallback={null}>
-          <WelcomeModal
+        <WelcomeModal
           activeUser={ui.chatActiveUser}
-            onDismiss={() => ui.setShowWelcome(false)}
-          />
-        </Suspense>
+          onDismiss={() => ui.setShowWelcome(false)}
+        />
       )}
 
       <DecomprocessFAB />
