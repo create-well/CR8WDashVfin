@@ -38,7 +38,8 @@ const TYPE_PREFIX: Record<MsgType, string> = {
   forum:    '[FORUM] ',
 };
 
-type ParsedPrefix = 'UPDATE' | 'REMINDER' | 'IDEA' | 'FORUM' | null;
+type MessagePrefix = 'UPDATE' | 'REMINDER' | 'IDEA' | 'FORUM';
+type ParsedPrefix = MessagePrefix | null;
 
 function parseMsg(content: string): { prefix: ParsedPrefix; body: string } {
   const m = content.match(/^\[(UPDATE|REMINDER|IDEA|FORUM)\] ([\s\S]*)/);
@@ -692,7 +693,7 @@ export function MessageDrawer({
 
     const tagBorder = msgTag && TAG_META[msgTag] ? `2px solid ${TAG_META[msgTag].color}44` : undefined;
 
-    const TYPE_BADGE: Partial<Record<ParsedPrefix, { icon: string; label: string; color: string }>> = {
+    const TYPE_BADGE: Partial<Record<MessagePrefix, { icon: string; label: string; color: string }>> = {
       UPDATE:   { icon: '\u{1F4CC}', label: 'Update',   color: '#E8A090' },
       REMINDER: { icon: '\u{1F550}', label: 'Reminder', color: '#FF9F0A' },
       IDEA:     { icon: '\u{1F4A1}', label: 'Idea',      color: '#FFD60A' },
