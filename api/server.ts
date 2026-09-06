@@ -151,7 +151,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data, error } = await sb().from(TABLE).select('key,value').in('key', KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const m: Record<string, any[]> = {};
-      for (const row of data ?? []) m[row.key] = parseList(row.value);
+      let mirrorLastWrite: string | null = null;
+      let mirrorStatus: string | null = null;
+      try {
+        const { data: latestRun } = await sb()
+          .from('mirror_sync_runs')
+          .select('finished_at,status')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (latestRun) {
+          mirrorLastWrite = latestRun.finished_at ?? null;
+          mirrorStatus = latestRun.status ?? null;
+        }
+      } catch {
+        // mirror_sync_runs read is best-effort
+      }
+
       res.json({
         tasks: m['cr8w_tasks']??[], stations: m['cr8w_stations']??[],
         forum: m['cr8w_forum']??[], messages: m['cr8w_messages']??[],
@@ -160,6 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         workshopPrograms: m['cr8w_workshop_programs']??[], workshopResources: m['cr8w_workshop_resources']??[],
         coflowDates: m['cr8w_coflow_dates']??[], coflowCheckins: m['cr8w_coflow_checkins']??[],
         wellNotes: m['cr8w_well_notes']??[], calendarEvents: m['cr8w_calendar_events']??[],
+        mirrorLastWrite, mirrorStatus,
       });
       return;
     }

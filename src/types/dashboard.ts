@@ -37,6 +37,8 @@ export interface DashboardPayload {
   wellNotes: WellNote[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
+  mirrorLastWrite?: Date | null;
+  mirrorStatus?: string | null;
   permissions: DashboardPermissions;
 }
 

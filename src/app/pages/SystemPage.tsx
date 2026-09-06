@@ -146,6 +146,11 @@ export function SystemPage() {
             status={data.lastSynced ? 'neutral' : 'warn'}
           />
           <HealthRow
+            label="Notion mirror write"
+            value={data.mirrorLastWrite ? data.mirrorLastWrite.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : 'Idle / Unreported'}
+            status={data.mirrorLastWrite ? (data.mirrorStatus === 'failed' ? 'warn' : 'ok') : 'neutral'}
+          />
+          <HealthRow
             label="Care consent"
             value={data.permissions.careConsent ? 'Explicitly granted' : 'Consent required'}
             status={data.permissions.careConsent ? 'ok' : 'warn'}

@@ -1943,7 +1943,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                                     letterSpacing: '0.02em',
                                   }}
                                 >
-                                  🚪 Open PlayD8s
+                                  🫧 Open Care
                                 </button>
                               )}
 

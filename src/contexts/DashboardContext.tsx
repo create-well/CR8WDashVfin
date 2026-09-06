@@ -51,6 +51,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [mirrorLastWrite, setMirrorLastWrite] = useState<Date | null>(null);
+  const [mirrorStatus, setMirrorStatus] = useState<string | null>(null);
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
@@ -132,6 +134,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setWellNotes(data.wellNotes || []);
         setSyncStatus('fresh');
         setLastSynced(new Date());
+        if (data.mirrorLastWrite) setMirrorLastWrite(new Date(data.mirrorLastWrite));
+        if (data.mirrorStatus) setMirrorStatus(data.mirrorStatus);
         silentFailCount.current = 0;
         if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
       } catch (e) {
@@ -541,6 +545,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     syncStatus: computedSyncStatus,
     lastSynced,
+    mirrorLastWrite,
+    mirrorStatus,
     permissions: {
       // Default closed: Care actions stay unavailable until consent is explicitly recorded.
       careConsent: false,
