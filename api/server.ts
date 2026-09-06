@@ -70,7 +70,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 function allowedOrigins(): string[] {
   return (process.env.CR8W_ALLOWED_ORIGINS ?? DEFAULT_ALLOWED_ORIGINS.join(','))
     .split(',')
-    .map(origin => origin.trim().replace(/\/$/, ''))
+    .map((origin: string) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean);
 }
 
@@ -93,7 +93,7 @@ function readBody(req: VercelRequest): Promise<any> {
   return new Promise(resolve => {
     if (req.body) { resolve(req.body); return; }
     let raw = '';
-    req.on('data', c => { raw += c; });
+    req.on('data', (c: any) => { raw += c; });
     req.on('end', () => { try { resolve(JSON.parse(raw)); } catch { resolve({}); } });
   });
 }
@@ -114,7 +114,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rawPath = !req.query.path
     ? []
     : Array.isArray(req.query.path) ? req.query.path : [req.query.path];
-  const pathArr = rawPath.flatMap(segment => String(segment).split('/').filter(Boolean));
+  const pathArr = rawPath.flatMap((segment: any) => String(segment).split('/').filter(Boolean));
 
   const [resource = '', id = '', sub = ''] = pathArr;
   const method = req.method ?? 'GET';
