@@ -35,9 +35,39 @@ test('dry-run syncs one normalized mock page from each source without writes', a
   }
 });
 
+test('dry-run follows Notion cursors and stops at the configured source limit', async () => {
+  const server = await startMockNotionServer({ recordsPerSource: 3, maxPageSize: 1 });
+  try {
+    const result = await runWorkerWithArgs(['--dry-run', '--source=projects', '--limit=2'], {
+      NOTION_API_KEY: 'mock-notion-key',
+      NOTION_API_URL: mockNotionUrl(server),
+    });
+    assert.equal(result.code, 0, result.stderr);
+    const summary = JSON.parse(result.stdout.trim());
+    assert.equal(summary.total_planned, 2);
+    assert.equal(summary.sources[0].fetched, 2);
+    assert.equal(summary.sources[0].cursor_advanced, false);
+    assert.deepEqual(server.requests.map(request => request.body), [
+      { page_size: 2 },
+      { page_size: 1, start_cursor: 'cursor-1' },
+    ]);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('write mode resumes, clears, and preserves checkpoints around durable writes', async () => {
+  const result = await runWorkerWithArgs(['tests/notion-sync-worker-write-fixture.ts'], {});
+  assert.equal(result.code, 0, result.stderr);
+});
+
 function runWorkerWithArgs(args, env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--experimental-strip-types', 'scripts/notion-sync-worker.ts', ...args], {
+    const [firstArg, ...remainingArgs] = args;
+    const isFixture = firstArg?.endsWith('.ts');
+    const script = isFixture ? firstArg : 'scripts/notion-sync-worker.ts';
+    const scriptArgs = isFixture ? remainingArgs : args;
+    const child = spawn(process.execPath, ['--experimental-strip-types', script, ...scriptArgs], {
       cwd: new URL('..', import.meta.url).pathname,
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],

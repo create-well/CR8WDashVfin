@@ -1,11 +1,9 @@
 /**
  * CR8W Create Well — Vercel API catch-all
- * File-based routing: api/server/[[...path]].ts handles every request to
- *   /api/server          (health check, with path = undefined)
- *   /api/server/sync     (path = ['sync'])
- *   /api/server/tasks/5  (path = ['tasks', '5'])
- *   etc.
- * Vercel automatically populates req.query.path with the matched segments.
+ * Query routing: api/server.ts handles requests such as
+ *   /api/server                       (health check)
+ *   /api/server?path=sync             (dashboard sync)
+ *   /api/server?path=tasks/5          (task update)
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
@@ -131,8 +129,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const requestedLimit = Number(limitParam ?? 50);
       const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 100) : 50;
       const { data, error } = await sb()
-        .from('mirror_sync_runs')
-        .select('id,started_at,finished_at,status,flows_count,moves_count,people_count,error')
+        .from('notion_sync_runs')
+        .select('run_id,mode,contract_version,status,started_at,finished_at,total_planned,total_written,total_dead_letters,error')
         .order('started_at', { ascending: false })
         .limit(limit);
       if (error) { res.status(500).json({ error: error.message }); return; }
@@ -151,21 +149,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data, error } = await sb().from(TABLE).select('key,value').in('key', KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const m: Record<string, any[]> = {};
+      for (const row of data ?? []) {
+        m[row.key] = parseList(row.value);
+      }
       let mirrorLastWrite: string | null = null;
       let mirrorStatus: string | null = null;
-      try {
-        const { data: latestRun } = await sb()
-          .from('mirror_sync_runs')
-          .select('finished_at,status')
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (latestRun) {
-          mirrorLastWrite = latestRun.finished_at ?? null;
-          mirrorStatus = latestRun.status ?? null;
-        }
-      } catch {
-        // mirror_sync_runs read is best-effort
+      const { data: latestRun, error: latestRunError } = await sb()
+        .from('notion_sync_runs')
+        .select('finished_at,status')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestRunError) {
+        console.error('[cr8w-api] notion sync status read failed:', latestRunError.message);
+      } else if (latestRun) {
+        mirrorLastWrite = latestRun.finished_at ?? null;
+        mirrorStatus = latestRun.status ?? null;
       }
 
       res.json({

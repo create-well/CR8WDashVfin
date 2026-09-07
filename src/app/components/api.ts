@@ -1,16 +1,14 @@
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { publicAnonKey } from '/utils/supabase/info';
 // Supabase publishable key — safe to embed (not a secret, designed for public clients)
 export const API_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ?? publicAnonKey;
 
 // Pick API base at runtime so the same build works everywhere:
 //   • VITE_API_BASE env var  → explicit override (highest priority)
-//   • default                → the deployed Supabase edge function
-// The edge function is the server-side data boundary and works from Vercel,
-// custom domains, and local/preview origins without a same-origin rewrite.
-const SUPABASE_FUNCTION_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-8dcd9693`;
+//   • default                → the same-origin Vercel API handler
+const DEFAULT_API_BASE = '/api/server';
 
 function resolveApiBase(): string {
-  return (import.meta.env.VITE_API_BASE as string | undefined) ?? SUPABASE_FUNCTION_BASE;
+  return (import.meta.env.VITE_API_BASE as string | undefined) ?? DEFAULT_API_BASE;
 }
 
 export const API_BASE = resolveApiBase();
@@ -307,6 +305,8 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  mirrorLastWrite?: string | null;
+  mirrorStatus?: string | null;
 }
 
 export interface CalendarEventKV {

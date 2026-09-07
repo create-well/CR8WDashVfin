@@ -111,6 +111,8 @@ test('provides detailed Decisions and System surfaces with recovery and consent 
 test('uses the injected publishable key for every client API request', () => {
   assert.match(apiClient, /VITE_SUPABASE_PUBLISHABLE_KEY/);
   assert.doesNotMatch(apiClient, /sb_publishable_[A-Za-z0-9_-]+/);
+  assert.match(apiClient, /DEFAULT_API_BASE\s*=\s*['"]\/api\/server['"]/);
+  assert.doesNotMatch(apiClient, /functions\/v1\/make-server/);
   assert.match(hubView, /Bearer \$\{API_KEY\}/);
   assert.doesNotMatch(hubView, /sb_publishable_[A-Za-z0-9_-]+/);
   assert.match(apiClient, /export function apiUrl\(path: string\)/);
@@ -130,11 +132,18 @@ test('deploys one canonical API handler and fails closed when publishable auth i
 
 test('exposes the protected notion-sync-runs read route with bounded, ordered fields', () => {
   assert.match(canonicalApi, /resource === ['\"]notion-sync-runs['\"]/);
-  assert.match(canonicalApi, /from\(['\"]mirror_sync_runs['\"]\)/);
-  assert.match(canonicalApi, /started_at,finished_at,status,flows_count,moves_count,people_count,error/);
+  assert.match(canonicalApi, /from\(['\"]notion_sync_runs['\"]\)/);
+  assert.match(canonicalApi, /run_id,mode,contract_version,status,started_at,finished_at,total_planned,total_written,total_dead_letters,error/);
   assert.match(canonicalApi, /ascending:\s*false/);
   assert.match(canonicalApi, /Math\.min\(Math\.max\(Math\.trunc\(requestedLimit\), 1\), 100\)/);
   assert.match(canonicalApi, /res\.json\(\{ runs: data \?\? \[\] \}\)/);
+});
+
+test('maps KV rows into the sync payload before returning dashboard collections', () => {
+  assert.match(canonicalApi, /for \(const row of data \?\? \[\]\)/);
+  assert.match(canonicalApi, /m\[row\.key\]\s*=\s*parseList\(row\.value\)/);
+  assert.match(canonicalApi, /from\(['"]notion_sync_runs['"]\)[\s\S]*select\(['"]finished_at,status['"]\)/);
+  assert.match(canonicalApi, /latestRunError/);
 });
 
 test('normalizes slash-delimited query paths for nested routes', () => {

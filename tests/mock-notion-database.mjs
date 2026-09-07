@@ -82,8 +82,9 @@ const pages = {
   },
 };
 
-export function startMockNotionServer() {
-  const server = createServer((request, response) => {
+export function startMockNotionServer({ recordsPerSource = 1, maxPageSize = Number.POSITIVE_INFINITY } = {}) {
+  const requests = [];
+  const server = createServer(async (request, response) => {
     if (request.method !== 'POST') {
       response.writeHead(405).end();
       return;
@@ -106,12 +107,34 @@ export function startMockNotionServer() {
     };
     const source = sourceById[match[1]];
     const page = source ? pages[source] : undefined;
+    let rawBody = '';
+    for await (const chunk of request) rawBody += chunk;
+    const body = rawBody ? JSON.parse(rawBody) : {};
+    requests.push({ source, body });
+
+    const requestedPageSize = Number.isInteger(body.page_size) ? body.page_size : 100;
+    const pageSize = Math.min(requestedPageSize, maxPageSize);
+    const start = typeof body.start_cursor === 'string'
+      ? Number(body.start_cursor.replace(/^cursor-/, ''))
+      : 0;
+    const sourcePages = page
+      ? Array.from({ length: recordsPerSource }, (_, index) => ({
+          ...page,
+          id: `${page.id}-${index + 1}`,
+          url: `${page.url}-${index + 1}`,
+        }))
+      : [];
+    const results = sourcePages.slice(start, start + pageSize);
+    const nextIndex = start + results.length;
+    const hasMore = nextIndex < sourcePages.length;
+
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({
-      results: page ? [page] : [],
-      next_cursor: null,
-      has_more: false,
+      results,
+      next_cursor: hasMore ? `cursor-${nextIndex}` : null,
+      has_more: hasMore,
     }));
   });
+  server.requests = requests;
   return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
 }
 
