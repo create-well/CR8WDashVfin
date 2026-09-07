@@ -1159,7 +1159,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 </button>
                 {gcalError && (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', marginTop: 6, fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    Personal calendar connection issue: {gcalError}
+                    <div style={{ marginTop: 2, color: 'var(--text-muted)' }}>
+                      Shared community events above are still available.
+                    </div>
                   </div>
                 )}
               </>
@@ -1192,7 +1195,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   </div>
                 ) : gcalError ? (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', padding: '8px 0', fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    Personal calendar connection issue: {gcalError}
+                    <div style={{ marginTop: 2, color: 'var(--text-muted)' }}>
+                      Shared community events above are still available.
+                    </div>
                     <button onClick={connectGoogleCalendar} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#1A73E8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', fontFamily: 'inherit' }}>Reconnect</button>
                   </div>
                 ) : gcalEvents.length === 0 ? (
@@ -1710,7 +1716,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   <span style={{
                     fontFamily: "var(--font-display)", fontSize: '0.92rem',
                     fontWeight: 600, color: 'var(--cr8w-text, #2C1C10)',
-                  }}>📅 next up</span>
+                  }}>📅 next up · shared/community events</span>
                   <span style={{
                     fontFamily: 'var(--font-label)', fontSize: '0.58rem',
                     color: 'var(--text-muted)', fontWeight: 500,
