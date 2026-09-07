@@ -705,6 +705,8 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   }
 
   const daysToLaunch = getDaysToLaunch();
+  const hasLaunched = daysToLaunch < 0;
+  const launchDayCount = Math.abs(daysToLaunch);
 
   // today reference for event computations
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1027,7 +1029,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 fontSize: '1.2rem', fontWeight: 800, color: 'var(--cr8w-text, #2D2438)',
                 fontFamily: "var(--font-display)", lineHeight: 1.1,
                 marginTop: 1, marginBottom: 1,
-              }}>{daysToLaunch} days</div>
+              }}>{hasLaunched ? `+${launchDayCount} days live` : `${launchDayCount} days`}</div>
             </MiniCard>
           </div>
         );

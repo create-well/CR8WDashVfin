@@ -150,6 +150,9 @@ export function GeyserView({
   }, []);
 
   const daysToLaunch = getDaysToLaunch();
+  const hasLaunched = daysToLaunch < 0;
+  const launchDayCount = Math.abs(daysToLaunch);
+  const launchDayDisplay = hasLaunched ? `+${launchDayCount}` : `${launchDayCount}`;
   const stationList = stations;
   const confirmedStations = stationList.filter(s => s.status === 'Confirmed').length;
   const highPriority = actionItems.filter(t => t.priority === 'high' && t.status !== 'done').length;
@@ -198,8 +201,10 @@ export function GeyserView({
         )}
 
         <div className="geyser-big-countdown">
-          <div className="gbc-num">{daysToLaunch}</div>
-          <div className="gbc-label">days until<br />April 15, 2026</div>
+          <div className="gbc-num">{launchDayDisplay}</div>
+          <div className="gbc-label">
+            {hasLaunched ? <>days since<br />April 15, 2026</> : <>days until<br />April 15, 2026</>}
+          </div>
         </div>
 
         {/* Key Dates mini-timeline */}
@@ -954,8 +959,8 @@ export function GeyserView({
         <div className="geyser-header-subtitle">the launchpad</div>
         <div className="geyser-header-info">
           <div className="geyser-header-countdown">
-            <span className="geyser-countdown-num">{daysToLaunch}</span>
-            <span className="geyser-countdown-label">days til we go live</span>
+            <span className="geyser-countdown-num">{launchDayDisplay}</span>
+            <span className="geyser-countdown-label">{hasLaunched ? 'days since launch' : 'days til we go live'}</span>
           </div>
         </div>
       </div>
