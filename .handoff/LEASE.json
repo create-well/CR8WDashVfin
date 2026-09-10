@@ -2,7 +2,7 @@
   "actor": "Manus",
   "provider": "Manus",
   "branch": "feat/notion-freshness-contract",
-  "scope": "Add a backward-compatible Notion mirror freshness contract and status UI",
-  "started_at": "2026-09-10T04:59:30-07:00",
-  "expires_at": "2026-09-10T06:59:30-07:00"
+  "scope": "Integrate the extracted Geyser task and station presentation slice while preserving the existing DashboardContext mutation boundary",
+  "started_at": "2026-09-10T09:17:05-07:00",
+  "expires_at": "2026-09-10T11:17:05-07:00"
 }

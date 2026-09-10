@@ -8,5 +8,6 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["api/**/*.ts", "tools/**/*.ts", "tests/**/*.ts"]
+  "include": ["api/**/*.ts", "tools/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["api/__tests__"]
 }

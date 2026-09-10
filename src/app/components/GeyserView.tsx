@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY,
-  getDaysToLaunch, formatDate, capitalize, formatTimestamp,
-  PHASE_TAGS, PHASE_META, TASK_ROLES,
+  getDaysToLaunch, capitalize, formatTimestamp,
+  PHASE_TAGS, PHASE_META,
   type NoteItem,
 } from './data';
 import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './api';
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { StationsList } from '../../features/geyser/components/StationsList';
+import { TaskList } from '../../features/geyser/components/TaskList';
+import { ForumSection } from '../../features/geyser/components/ForumSection';
+import { GeyserTabs } from '../../features/geyser/components/GeyserTabs';
+import { GuestJourney } from '../../features/geyser/components/GuestJourney';
+import { TaskOverview } from '../../features/geyser/components/TaskOverview';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -49,66 +55,6 @@ interface GeyserViewProps {
 
 const statusLabels: Record<string, string> = { in_progress: 'In Progress', planning: 'Planning', done: 'Done' };
 const statusClasses: Record<string, string> = { in_progress: 'journey-status-active', planning: 'journey-status-planning', done: 'journey-status-done' };
-const statusColors: Record<string, { bg: string; color: string; dot: string }> = {
-  'Confirmed': { bg: '#E0F0E0', color: '#3A7A3A', dot: '#6BAF6B' },
-  'Planning': { bg: '#FFF3D6', color: '#8A6A20', dot: '#D4A771' },
-  'Exploring': { bg: '#EAF4FC', color: '#3A6A8A', dot: '#A9D6F8' },
-  'TBD': { bg: '#F0F0F0', color: '#666', dot: '#A89888' }
-};
-
-// Due-soon / overdue helper
-function getDueClass(due_date?: string, status?: string): string {
-  if (!due_date || status === 'done') return '';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(due_date + 'T00:00:00');
-  const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'overdue';
-  if (diffDays <= 3) return 'due-soon';
-  return '';
-}
-
-// Inline editable text
-function InlineEdit({ value, onSave, className, style, multiline }: {
-  value: string; onSave: (v: string) => void;
-  className?: string; style?: React.CSSProperties; multiline?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-
-  function commit() {
-    if (draft.trim() && draft !== value) onSave(draft.trim());
-    setEditing(false);
-  }
-
-  if (editing) {
-    const props = {
-      value: draft,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
-      onBlur: commit,
-      onKeyDown: (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !multiline) { e.preventDefault(); commit(); }
-        if (e.key === 'Escape') { setDraft(value); setEditing(false); }
-      },
-      autoFocus: true,
-      style: { width: '100%', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--clay-velour)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 'inherit', ...style },
-    };
-    return multiline
-      ? <textarea {...props} rows={3} style={{ ...props.style, resize: 'vertical' }} />
-      : <input {...props} />;
-  }
-
-  return (
-    <span
-      className={className}
-      style={{ cursor: 'text', ...style }}
-      onClick={() => { setDraft(value); setEditing(true); }}
-      title="Click to edit"
-    >
-      {value}
-    </span>
-  );
-}
-
 export function GeyserView({
   onNavigate, actionItems, stations, announcements, wellNotes,
   forum, forumReplies, defaultTab, onAddTask, onUpdateTaskStatus, onUpdateTask, onDeleteTask,
@@ -119,13 +65,10 @@ export function GeyserView({
   onAddStation, onDeleteStation,
 }: GeyserViewProps) {
   const [activeTab, setActiveTab] = useState<GeyserTab>(defaultTab || 'overview');
-  const [taskFilter, setTaskFilter] = useState<string>('all');
   const [forumAuthor, setForumAuthor] = useState<string>('sunshine');
   const [forumDraft, setForumDraft] = useState('');
   const [forumTag, setForumTag] = useState<string>('update');
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
-  const [showAddStation, setShowAddStation] = useState(false);
-  const [newStation, setNewStation] = useState({ emoji: '🎨', name: '', description: '', status: 'Exploring', owner: 'monny' });
   const [noteInput, setNoteInput] = useState('');
   const [editingForumId, setEditingForumId] = useState<number | null>(null);
   const [editForumDraft, setEditForumDraft] = useState('');
@@ -530,245 +473,28 @@ export function GeyserView({
 
   // ── STATIONS TAB ──────────────────────────────────────────────────────────────
   function renderStations() {
-    const grouped = Object.entries(statusColors).map(([status, colors]) => ({
-      status, colors,
-      items: stationList.filter(s => s.status === status),
-    }));
-
     return (
-      <div className="geyser-tab-content">
-        {/* Station summary */}
-        <div className="geyser-station-summary">
-          {Object.entries(statusColors).map(([status, colors]) => {
-            const count = stationList.filter(s => s.status === status).length;
-            return (
-              <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.dot }} />
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600, color: colors.color }}>
-                  {count} {status}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Add station button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button onClick={() => setShowAddStation(!showAddStation)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--cr8w-primary)', color: '#fff', fontFamily: 'var(--font-label)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
-            {showAddStation ? '✕ Cancel' : '+ Add Station'}
-          </button>
-        </div>
-
-        {showAddStation && (
-          <div className="card" style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input value={newStation.emoji} onChange={e => setNewStation({ ...newStation, emoji: e.target.value })} placeholder="Emoji" style={{ width: 50, padding: '6px 8px', borderRadius: 6, border: '1px solid var(--border-soft)', textAlign: 'center', fontSize: '1.2rem', background: 'transparent' }} />
-              <input value={newStation.name} onChange={e => setNewStation({ ...newStation, name: e.target.value })} placeholder="Station name" style={{ flex: 1, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-body)', fontSize: '0.85rem', background: 'transparent', color: 'var(--text-primary)' }} />
-            </div>
-            <input value={newStation.description} onChange={e => setNewStation({ ...newStation, description: e.target.value })} placeholder="Description" style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-body)', fontSize: '0.85rem', background: 'transparent', color: 'var(--text-primary)' }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select value={newStation.status} onChange={e => setNewStation({ ...newStation, status: e.target.value })} style={{ flex: 1, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-body)', fontSize: '0.82rem', background: 'transparent', color: 'var(--text-primary)' }}>
-                {Object.keys(statusColors).map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={newStation.owner} onChange={e => setNewStation({ ...newStation, owner: e.target.value })} style={{ flex: 1, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-body)', fontSize: '0.82rem', background: 'transparent', color: 'var(--text-primary)' }}>
-                {Object.keys(PERSONS).map(k => <option key={k} value={k}>{capitalize(k)}</option>)}
-              </select>
-            </div>
-            <button
-              onClick={() => {
-                if (newStation.name.trim()) {
-                  onAddStation({ emoji: newStation.emoji || '🎨', name: newStation.name.trim(), description: newStation.description.trim(), status: newStation.status, owner: newStation.owner });
-                  setNewStation({ emoji: '🎨', name: '', description: '', status: 'Exploring', owner: 'monny' });
-                  setShowAddStation(false);
-                }
-              }}
-              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--cr8w-primary)', color: '#fff', fontFamily: 'var(--font-label)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-end' }}
-            >
-              Add Station
-            </button>
-          </div>
-        )}
-
-        {stationList.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>🏕️</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              no stations yet — add one above to get started
-            </div>
-          </div>
-        ) : (
-          <div className="geyser-stations-grid">
-            {stationList.map(s => {
-              const sc = statusColors[s.status] || statusColors['TBD'];
-              const owner = PERSONS[s.owner];
-              return (
-                <div key={s.id} className="geyser-station-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '1.4rem' }}>{s.emoji}</span>
-                      <InlineEdit
-                        value={s.name}
-                        onSave={v => onUpdateStationField(s.id, { name: v })}
-                        style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}
-                      />
-                    </div>
-                    <button onClick={() => onDeleteStation(s.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
-                  </div>
-                  <InlineEdit
-                    value={s.description}
-                    onSave={v => onUpdateStationField(s.id, { description: v })}
-                    multiline
-                    style={{ fontFamily: 'var(--font-body)', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'block', marginBottom: 10 }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <select
-                      value={s.status}
-                      onChange={e => onUpdateStationStatus(s.id, e.target.value)}
-                      style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: sc.bg, color: sc.color, fontFamily: 'var(--font-label)', fontSize: '0.68rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      {Object.keys(statusColors).map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
-                    <select
-                      value={s.owner}
-                      onChange={e => onUpdateStationOwner(s.id, e.target.value)}
-                      style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: owner?.color || 'var(--text-secondary)', cursor: 'pointer' }}
-                    >
-                      {Object.keys(PERSONS).map(k => <option key={k} value={k}>{capitalize(k)}</option>)}
-                    </select>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <StationsList
+        stations={stationList}
+        onAddStation={onAddStation}
+        onUpdateStationField={onUpdateStationField}
+        onUpdateStationStatus={onUpdateStationStatus}
+        onUpdateStationOwner={onUpdateStationOwner}
+        onDeleteStation={onDeleteStation}
+      />
     );
   }
 
   // ── TASKS TAB ─────────────────────────────────────────────────────────────────
   function renderTasks() {
-    const filtered = taskFilter === 'all' ? actionItems : actionItems.filter(t => t.person === taskFilter);
-    const sorted = [...filtered].sort((a, b) => {
-      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-      const statusOrder: Record<string, number> = { blocked: 0, todo: 1, in_progress: 2, done: 3 };
-      if (a.status === 'done' && b.status !== 'done') return 1;
-      if (b.status === 'done' && a.status !== 'done') return -1;
-      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) return priorityOrder[a.priority] - priorityOrder[b.priority];
-      return statusOrder[a.status] - statusOrder[b.status];
-    });
-
     return (
-      <div className="geyser-tab-content">
-        {/* Prominent terracotta Add Task CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h3 className="geyser-section-title" style={{ marginBottom: 0 }}>✅ Next Moves</h3>
-          <button
-            onClick={onAddTask}
-            style={{
-              padding: '10px 22px', borderRadius: 10, border: 'none',
-              background: '#C25B38', color: '#fff',
-              fontFamily: 'var(--font-display)', fontSize: '0.92rem', fontWeight: 600,
-              cursor: 'pointer', boxShadow: '0 2px 10px rgba(194,91,56,0.28)',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#A84A2A'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#C25B38'; }}
-          >
-            + Drop a Move
-          </button>
-        </div>
-
-        {/* Role-aware filter pills */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-          <button
-            onClick={() => setTaskFilter('all')}
-            style={{
-              padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
-              border: `1.5px solid ${taskFilter === 'all' ? '#C25B38' : 'var(--border-soft)'}`,
-              background: taskFilter === 'all' ? 'rgba(194,91,56,0.09)' : 'transparent',
-              color: taskFilter === 'all' ? '#C25B38' : 'var(--text-muted)',
-              fontFamily: 'var(--font-label)', fontSize: '0.72rem', fontWeight: 600,
-            }}
-          >All Roles</button>
-          {Object.entries(TASK_ROLES).map(([key, role]) => {
-            const active = taskFilter === key;
-            const openCount = actionItems.filter(t => t.person === key && t.status !== 'done').length;
-            return (
-              <button
-                key={key}
-                onClick={() => setTaskFilter(key)}
-                title={`${role.short} — ${role.sub}`}
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-                  padding: '7px 13px', borderRadius: 10, cursor: 'pointer', minWidth: 90,
-                  border: `1.5px solid ${active ? role.color : 'var(--border-soft)'}`,
-                  background: active ? `${role.color}20` : 'transparent',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: '0.8rem' }}>{role.emoji}</span>
-                  <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.74rem', fontWeight: 700, color: active ? role.color : 'var(--text-primary)' }}>
-                    {role.name}
-                  </span>
-                  {openCount > 0 && (
-                    <span style={{ padding: '0 5px', borderRadius: 8, lineHeight: '16px', fontSize: '0.58rem', fontWeight: 700, background: active ? role.color : 'var(--sandstone)', color: active ? '#fff' : 'var(--text-muted)' }}>
-                      {openCount}
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.57rem', color: 'var(--text-muted)', marginTop: 1 }}>{role.short}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {sorted.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>✨</div>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              {taskFilter === 'all' ? 'the stage is set — what\u2019s your first move?' : `no moves for ${TASK_ROLES[taskFilter]?.name || capitalize(taskFilter)}`}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sorted.map(task => {
-              const role = TASK_ROLES[task.person];
-              const dueClass = getDueClass(task.due_date, task.status);
-              return (
-                <div key={task.id} className={`card ${dueClass}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-                  <div className="geyser-task-person-dot" style={{ background: role?.color || '#A89888' }} title={role ? `${role.name} — ${role.sub}` : task.person}>
-                    {role?.emoji || '?'}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <InlineEdit
-                      value={task.title}
-                      onSave={v => onUpdateTask(task.id, { title: v })}
-                      style={{ fontFamily: 'var(--font-body)', fontSize: '0.85rem', fontWeight: 600, color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: task.status === 'done' ? 'line-through' : 'none' }}
-                    />
-                    <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <span className={`gcc-priority-badge ${task.priority}`} style={{ fontSize: '0.6rem', padding: '1px 6px' }}>{task.priority}</span>
-                      {task.due_date && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: dueClass === 'overdue' ? '#D45050' : 'var(--text-muted)' }}>Due {formatDate(task.due_date)}</span>}
-                      {task.category && <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.6rem', color: 'var(--text-muted)', background: 'var(--sandstone)', padding: '1px 6px', borderRadius: 4 }}>{task.category}</span>}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <select
-                      value={task.status}
-                      onChange={e => onUpdateTaskStatus(task.id, e.target.value)}
-                      style={{ padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border-soft)', fontFamily: 'var(--font-label)', fontSize: '0.68rem', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                    >
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="done">Done</option>
-                      <option value="blocked">Blocked</option>
-                    </select>
-                    <button onClick={() => onDeleteTask(task.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', padding: 4 }}>🗑</button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <TaskList
+        actionItems={actionItems}
+        onAddTask={onAddTask}
+        onUpdateTask={onUpdateTask}
+        onUpdateTaskStatus={onUpdateTaskStatus}
+        onDeleteTask={onDeleteTask}
+      />
     );
   }
 
@@ -965,24 +691,35 @@ export function GeyserView({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="geyser-tabs">
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            className={`geyser-tab${activeTab === t.key ? ' active' : ''}`}
-            onClick={() => setActiveTab(t.key)}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
+      <GeyserTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {activeTab === 'overview' && renderOverview()}
-      {activeTab === 'journey' && renderJourney()}
+      {activeTab === 'overview' && (
+        <TaskOverview
+          onNavigate={onNavigate}
+          announcements={announcements}
+          onDismissAnnouncement={onDismissAnnouncement}
+          onAddAnnouncement={onAddAnnouncement}
+          stations={stations}
+          actionItems={actionItems}
+          setActiveTab={setActiveTab}
+          wellNotes={wellNotes}
+          onAddNote={onAddNote}
+        />
+      )}
+      {activeTab === 'journey' && <GuestJourney />}
       {activeTab === 'stations' && renderStations()}
       {activeTab === 'tasks' && renderTasks()}
-      {activeTab === 'forum' && renderForum()}
+      {activeTab === 'forum' && (
+        <ForumSection
+          forum={forum}
+          forumReplies={forumReplies}
+          onAddForumPost={onAddForumPost}
+          onUpdateForumPost={onUpdateForumPost}
+          onDeleteForumPost={onDeleteForumPost}
+          onAddForumReply={onAddForumReply}
+          onDeleteForumReply={onDeleteForumReply}
+        />
+      )}
     </div>
   );
 }

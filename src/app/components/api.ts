@@ -11,6 +11,8 @@ function resolveApiBase(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   const onVercelOrDomain =
     host.endsWith('.vercel.app') ||
+    host === 'www.cr8w.com' ||
+    host === 'cr8w.com' ||
     host === 'createwell.monnyfest.co' ||
     host === 'localhost' ||
     host === '127.0.0.1';
@@ -24,10 +26,27 @@ function resolveApiBase(): string {
 const BASE = resolveApiBase();
 const DASHBOARD_SYNC_BASE = BASE.endsWith('/api/server') ? BASE.slice(0, -'/server'.length) : BASE;
 
-// Auth header: required by Supabase edge function; Vercel routes ignore it.
-const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
+// The publishable key identifies the public client. When a Supabase session is
+// present, forward its access token so server-side source capabilities can be
+// evaluated without trusting browser profile labels or localStorage profiles.
+function requestHeaders(path: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (path !== '/dashboard-sync') headers.Authorization = `Bearer ${API_KEY}`;
+  if (typeof localStorage === 'undefined') return headers;
+  try {
+    const raw = localStorage.getItem('cr8w_supabase_auth');
+    const parsed = raw ? JSON.parse(raw) : null;
+    const accessToken = parsed?.access_token ?? parsed?.currentSession?.access_token;
+    if (typeof accessToken === 'string' && accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  } catch {
+    // Keep the publishable client header when session storage is unavailable.
+  }
+  return headers;
+}
 
-async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
+export async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
   const maxRetries = method === 'GET' ? 1 : 0;
   // Shorter timeout: surface offline state in ≤8 s instead of 30 s.
@@ -40,7 +59,7 @@ async function req<T>(method: string, path: string, body?: unknown, base = BASE)
     try {
       const res = await fetch(`${base}${path}`, {
         method,
-        headers,
+        headers: requestHeaders(path),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -54,7 +73,7 @@ async function req<T>(method: string, path: string, body?: unknown, base = BASE)
       if (e?.name === 'AbortError') {
         lastError = new Error(`${method} ${path} → timed out after ${TIMEOUT_MS / 1000}s`);
       }
-      const isNetworkError = e?.name === 'AbortError' || (e instanceof TypeError && e.message === 'Failed to fetch');
+      const isNetworkError = e?.name === 'AbortError' || (e?.name === 'TypeError' && e?.message === 'Failed to fetch');
       if (attempt < maxRetries && isNetworkError) {
         await new Promise(r => setTimeout(r, 2_000));
         continue;
@@ -153,7 +172,10 @@ export const getInviteCounts = () => req<InviteCounts>('GET', '/invite-counts');
 export const setInviteCounts = (counts: Omit<InviteCounts, 'updated_at'>) => req<InviteCounts & { ok: boolean }>('POST', '/invite-counts', counts);
 
 // Calendar Events (synced from Google Calendar via KV)
-export const getCalendarEvents = () => req<CalendarEventKV[]>('GET', '/calendar-events');
+export async function getCalendarEvents(): Promise<CalendarEventKV[]> {
+  const data = await req<CalendarEventKV[] | { status?: string }>('GET', '/calendar-events');
+  return Array.isArray(data) ? data : [];
+}
 export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolean; count: number }>('POST', '/calendar-events', events);
 
 // Parking Lot (quick-capture from Playground, KV-backed)
@@ -310,13 +332,30 @@ export interface SyncData {
   freshness?: SyncFreshness;
 }
 
+export interface NotionPropertyValue {
+  type: string;
+  value: unknown;
+  displayValue?: string;
+  sensitivity?: 'public' | 'team' | 'restricted';
+}
+
+export interface NotionSourceMetadata {
+  key: string;
+  label: string;
+  visible: boolean;
+  searchable: boolean;
+  sensitivity: 'public' | 'team' | 'restricted';
+  displayFields: string[];
+  recordCount: number;
+}
+
 export interface NotionMirrorRecord {
-  source: 'people' | 'flows' | 'moves' | 'content' | 'money';
+  source: 'people' | 'flows' | 'moves' | 'content' | 'money' | 'engineeringDelivery';
   sourcePageId: string;
   sourceUrl: string | null;
   sourceLastEditedAt: string | null;
   archived: boolean;
-  properties: Record<string, unknown>;
+  properties: Record<string, unknown | NotionPropertyValue>;
 }
 
 export interface NotionPropertyValue {
@@ -345,6 +384,7 @@ export interface NotionMirrors {
   moves: NotionMirrorRecord[];
   content: NotionMirrorRecord[];
   money: NotionMirrorRecord[];
+  engineeringDelivery: NotionMirrorRecord[];
 }
 
 export interface SyncFreshness {
@@ -352,6 +392,13 @@ export interface SyncFreshness {
   mirrorUpdatedAt: string | null;
   sourceLastEditedAt: string | null;
   syncRunId: string | null;
+  sourceFreshness?: Record<string, {
+    status: 'ok' | 'error';
+    recordCount: number;
+    sourceLastEditedAt: string | null;
+    lastSuccessfulSyncAt: string | null;
+    error?: string;
+  }>;
 }
 
 export interface CalendarEventKV {

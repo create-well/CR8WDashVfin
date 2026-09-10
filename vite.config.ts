@@ -38,10 +38,12 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
-          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'react-vendor'
-          if (id.includes('/recharts/') || id.includes('/d3-')) return 'charts-vendor'
-          if (id.includes('/@mui/') || id.includes('/@emotion/')) return 'mui-vendor'
-          if (id.includes('/lucide-react/')) return 'icons-vendor'
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) return 'vendor-react'
+          if (id.includes('/@mui/') || id.includes('/@emotion/')) return 'vendor-mui'
+          if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-charts'
+          if (id.includes('/@supabase/')) return 'vendor-supabase'
+          if (id.includes('/@radix-ui/')) return 'vendor-radix'
+          if (id.includes('/lucide-react/')) return 'vendor-icons'
           return 'vendor'
         },
       },

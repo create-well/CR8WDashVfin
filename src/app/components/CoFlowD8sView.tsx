@@ -3,6 +3,12 @@ import { Plus, X, MapPin, Clock, Users, ChevronDown, ChevronUp, Lock, Unlock, Ed
 import { PERSONS, capitalize, formatTimestamp } from './data';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
+import { CoFlowUpcomingFeature } from '../../features/coflow/CoFlowUpcomingFeature';
+import { DateCard } from '../../features/coflow/components/DateCard';
+import { AddDateModal, EditD8Form as FeatureEditD8Form } from '../../features/coflow/components/AddDateModal';
+import { AgendaEditor } from '../../features/coflow/components/AgendaEditor';
+import { ArchivedDates } from '../../features/coflow/components/ArchivedDates';
+import { CheckInList } from '../../features/coflow/components/CheckInList';
 
 type D8Tab = 'upcoming' | 'checkin' | 'archive' | 'agenda';
 
@@ -246,11 +252,11 @@ export function CoFlowD8sView({
           </div>
 
           {showCreateD8 && !editingD8 && (
-            <CreateD8Form onSubmit={(d) => { onAddCoFlowDate(d); setShowCreateD8(false); }} />
+            <AddDateModal onSubmit={(d) => { onAddCoFlowDate(d); setShowCreateD8(false); }} />
           )}
 
           {editingD8 && nextD8 && (
-            <EditD8Form
+            <FeatureEditD8Form
               d8={nextD8}
               onSave={(updates) => { onUpdateCoFlowDate(nextD8.id, updates); setEditingD8(false); }}
               onCancel={() => setEditingD8(false)}
@@ -266,102 +272,19 @@ export function CoFlowD8sView({
             </div>
           )}
 
-          {nextD8 && !editingD8 && <NextD8Card d8={nextD8} onUpdate={onUpdateCoFlowDate} onDelete={onDeleteCoFlowDate} onEdit={() => setEditingD8(true)} />}
+          {nextD8 && !editingD8 && <DateCard d8={nextD8} onUpdate={onUpdateCoFlowDate} onDelete={onDeleteCoFlowDate} onEdit={() => setEditingD8(true)} />}
 
-          {/* Other upcoming */}
-          {upcomingD8s.length > 1 && (
-            <div style={{ marginTop: 20 }}>
-              <span style={labelStyle}>Also On Deck</span>
-              {upcomingD8s.slice(1).map(d8 => (
-                <div key={d8.id} style={{ ...cardStyle, marginBottom: 10, padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '0.95rem', color: 'var(--text-primary)' }}>{formatD8(d8.date)}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: 12, marginTop: 4 }}>
-                      <span><Clock size={12} /> {getTimeDisplay(d8)}</span>
-                      <span><MapPin size={12} /> {d8.location || 'TBD'}</span>
-                      {d8.host && <span><Users size={12} /> {PERSONS[d8.host]?.name || d8.host}</span>}
-                    </div>
-                  </div>
-                  <button onClick={() => onDeleteCoFlowDate(d8.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', opacity: 0.4 }}><X size={14} /></button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Upcoming from shared Google Calendar */}
-          {(() => {
-            const now = new Date(); now.setHours(0, 0, 0, 0);
-            const upcoming = kvCalEvents
-              .filter(ev => new Date(ev.start) >= now)
-              .sort((a, b) => a.start.localeCompare(b.start))
-              .slice(0, 5);
-            if (upcoming.length === 0) return null;
-            return (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={labelStyle}>
-                    <Calendar size={11} style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }} />
-                    Upcoming from Calendar
-                  </span>
-                  <a
-                    href="https://calendar.google.com/calendar/u/0/r"
-                    target="_blank" rel="noopener noreferrer"
-                    style={{
-                      fontFamily: 'var(--font-label)', fontSize: '0.62rem', color: 'var(--cr8w-primary)',
-                      fontWeight: 600, textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.3px',
-                    }}
-                  >Open Calendar ↗</a>
-                </div>
-                {upcoming.map(ev => {
-                  const startDate = new Date(ev.start);
-                  const isToday = startDate.toDateString() === new Date().toDateString();
-                  const dateLabel = startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-                  const timeLabel = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
-                  return (
-                    <div key={ev.id} style={{
-                      ...cardStyle, marginBottom: 8, padding: '10px 14px',
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      background: isToday ? 'rgba(var(--cr8w-primary-rgb, 123,168,157),0.06)' : 'var(--bg-card)',
-                      border: isToday ? '1.5px solid rgba(var(--cr8w-primary-rgb, 123,168,157),0.25)' : '1px solid var(--border-soft)',
-                    }}>
-                      <div style={{
-                        width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                        background: isToday ? 'var(--cr8w-primary)' : 'var(--camel-sun, #D4A771)',
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontFamily: 'var(--font-label)', fontSize: '0.82rem', fontWeight: 600,
-                          color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>{ev.title}</div>
-                        <div style={{
-                          fontFamily: 'var(--font-label)', fontSize: '0.65rem', color: 'var(--text-muted)',
-                          display: 'flex', gap: 6, alignItems: 'center',
-                        }}>
-                          <span>{dateLabel}</span>
-                          <span style={{ opacity: 0.3 }}>·</span>
-                          <span>{timeLabel}</span>
-                          {ev.location && <><span style={{ opacity: 0.3 }}>·</span><span>{ev.location}</span></>}
-                        </div>
-                      </div>
-                      {isToday && (
-                        <span style={{
-                          fontFamily: 'var(--font-label)', fontSize: '0.58rem', fontWeight: 700,
-                          color: '#fff', background: 'var(--cr8w-primary)', borderRadius: 6, padding: '2px 6px',
-                          textTransform: 'uppercase', letterSpacing: '0.03em',
-                        }}>Today</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
+          <CoFlowUpcomingFeature
+            upcomingD8s={upcomingD8s}
+            kvCalEvents={kvCalEvents}
+            onDeleteCoFlowDate={onDeleteCoFlowDate}
+          />
         </div>
       )}
 
       {/* ── CHECK-IN TAB ── */}
       {tab === 'checkin' && (
-        <CheckinTab
+        <CheckInList
           coflowCheckins={coflowCheckins}
           weekCheckins={weekCheckins}
           checkedInPersons={checkedInPersons}
@@ -375,7 +298,7 @@ export function CoFlowD8sView({
 
       {/* ── AGENDA TAB ── */}
       {tab === 'agenda' && (
-        <AgendaBuilder
+        <AgendaEditor
           d8={nextD8}
           onUpdateD8={nextD8 ? (updates) => onUpdateCoFlowDate(nextD8.id, updates) : undefined}
         />
@@ -383,7 +306,7 @@ export function CoFlowD8sView({
 
       {/* ── ARCHIVE TAB ── */}
       {tab === 'archive' && (
-        <ArchiveTab
+        <ArchivedDates
           archivedD8s={archivedD8s}
           expandedArchive={expandedArchive}
           setExpandedArchive={setExpandedArchive}

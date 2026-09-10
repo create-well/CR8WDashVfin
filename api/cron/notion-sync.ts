@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   try {
     const result = await runSync(false);
-    res.status(200).json({ ok: true, source: 'vercel-cron', ...result });
+    res.status(200).json({ source: 'vercel-cron', ...result });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Notion cron sync failed' });
   }
