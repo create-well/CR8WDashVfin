@@ -67,14 +67,57 @@ export async function signOut(): Promise<void> {
 interface Props { onAuthenticated: (profileKey: string) => void; }
 type Mode = 'signin' | 'register' | 'reset';
 
-function Screen({ children }: { children: React.ReactNode }) {
+function Screen({ children, landing }: { children: React.ReactNode; landing?: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '24px 16px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '40px 20px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(194,91,56,0.12) 0%,transparent 70%)' }} />
         <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(123,168,157,0.14) 0%,transparent 70%)' }} />
       </div>
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>{children}</div>
+      <div className="cr8w-gate-shell" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: landing ? 960 : 420, display: 'flex', alignItems: 'center', gap: 40 }}>
+        {landing && <div className="cr8w-gate-landing" style={{ flex: 1, minWidth: 0 }}>{landing}</div>}
+        <div style={{ width: '100%', maxWidth: 420, flexShrink: 0, margin: landing ? undefined : '0 auto' }}>{children}</div>
+      </div>
+      <style>{`@media (max-width: 880px) { .cr8w-gate-shell { flex-direction: column; gap: 28px; } .cr8w-gate-landing { width: 100%; max-width: 520px; } }`}</style>
+    </div>
+  );
+}
+
+// ── Public landing: explains what Create Well is before any sign-in ───────────
+function Landing() {
+  const itemStyle: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'baseline', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.84rem', color: '#5A4A40', lineHeight: 1.55 };
+  const dotStyle: React.CSSProperties = { color: '#C25B38', fontWeight: 700 };
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+        <img src={cwLogoImg} alt="Create Well" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
+        <div>
+          <div style={{ fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '2rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</div>
+          <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.7rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
+        </div>
+      </div>
+      <p style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.95rem', color: '#3D3230', lineHeight: 1.7, margin: '0 0 14px' }}>
+        Create Well is the private home base of the Create Well co-creation collective — a small team
+        running creative-wellness experiments, events, and content together.
+      </p>
+      <p style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.84rem', color: '#5A4A40', lineHeight: 1.65, margin: '0 0 18px' }}>
+        The dashboard gathers the collective's week in one place — moves, flows, content, money,
+        and decisions — mirrored read-only from the team's Notion workspace. Each member signs in
+        with their own account. Members can optionally connect Google Calendar to see upcoming
+        collective events and sync events they choose to schedule; calendar access is used only
+        inside this dashboard, never sold or shared.
+      </p>
+      <div style={{ display: 'grid', gap: 8, marginBottom: 22 }}>
+        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>This Week</strong> — the collective's pulse: what's moving, what's resting.</span></div>
+        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Moves & Flows</strong> — active projects and recurring rhythms from Notion.</span></div>
+        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Content & Money</strong> — what's being made, and the collective's shared pots.</span></div>
+        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Calendar sync</strong> — optional Google Calendar connection for collective events.</span></div>
+      </div>
+      <div style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.74rem', color: '#A08878' }}>
+        <a href="/privacy.html" style={{ color: '#C25B38', textDecoration: 'underline' }}>Privacy Policy</a>
+        {' · '}
+        <a href="/terms.html" style={{ color: '#C25B38', textDecoration: 'underline' }}>Terms of Service</a>
+      </div>
     </div>
   );
 }
@@ -196,7 +239,7 @@ export function AuthGate({ onAuthenticated }: Props) {
   }
 
   return (
-    <Screen>
+    <Screen landing={<Landing />}>
       <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(14px)', borderRadius: 24, boxShadow: '0 8px 40px rgba(194,91,56,0.12),0 2px 8px rgba(0,0,0,0.06)', padding: '36px 32px 30px', border: '1px solid rgba(212,167,113,0.25)', animation: shake ? 'cr8w-shake 0.5s ease' : 'none' }}>
 
         {/* Brand */}

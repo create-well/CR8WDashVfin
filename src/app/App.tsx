@@ -26,7 +26,7 @@ import { GCAL_CLIENT_ID } from './components/data';
 
     import('/utils/supabase/info').then(({ projectId, publicAnonKey }) => {
       const host = window.location.hostname;
-      const onVercelOrDomain = host.endsWith('.vercel.app') || host === 'createwell.monnyfest.co' || host === 'localhost' || host === '127.0.0.1';
+      const onVercelOrDomain = host.endsWith('.vercel.app') || host === 'cr8w.com' || host === 'www.cr8w.com' || host === 'createwell.monnyfest.co' || host === 'localhost' || host === '127.0.0.1';
       const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
         ?? (onVercelOrDomain ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server');
       const serverUrl = `${apiBase}/gcal-token-exchange`;
