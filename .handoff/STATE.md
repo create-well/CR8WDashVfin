@@ -34,9 +34,16 @@ Validation completed locally: `pnpm build` passed with 2,141 modules transformed
 
 ## Post-Deployment Verification
 
-- Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated interaction across all tabs remains **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, and rejected page DOM/console inspection with a Chrome-extension artifact error. Static production asset checks confirm all six tab components are deployed; they do not replace authenticated click verification.
+- Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated interaction across all tabs remains **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, rejected page DOM/console inspection with a Chrome-extension artifact error, and rejected the alternative browser-console execution path as unsupported. Static production asset checks confirm all six tab components are deployed; they do not replace authenticated click verification.
 - `GET /api/dashboard-sync` returned HTTP 200 in three direct probes. Total latency was 0.733s, 0.564s, and 0.704s; mean 0.667s; payload size 55,518 bytes. The response contained Notion freshness metadata, 6 tasks, 6 stations, 10 messages, and no forum records.
 - Vercel runtime logs for deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` showed four `/api/dashboard-sync` requests, all HTTP 200, with no recent error or fatal entries. Build logs show the Vite build completed and deployment reached Ready; pre-existing Vercel TypeScript diagnostics for missing Node types and Supabase auth typings were emitted but did not block deployment.
+
+## Post-Deployment Monitoring — 2026-09-10
+
+- Three consecutive `GET /api/dashboard-sync` probes returned HTTP 200 with identical 55,518-byte payloads and stable counts of 6 tasks, 6 stations, and 0 forum records. Latencies were 1.189s, 0.554s, and 0.537s.
+- The mirror freshness timestamp remained `2026-09-10T13:23:36.781Z`, approximately 226 minutes old at the 17:09 UTC check. This is a freshness concern, not a failed request; do not present the mirror as current without the existing freshness indicator.
+- The latest deployment was `READY`; Vercel reported no runtime error clusters in the selected one-hour window and one HTTP 200 `/api/dashboard-sync` request in grouped logs. The 24-hour error view showed only a pre-existing Node `url.parse()` deprecation warning on `/api/server/[[...path]]`, not an application failure.
+- A safe GET/OPTIONS check of `/api/notion-sync` returned HTTP 405/200 respectively, confirming the protected sync endpoint was not written to. Direct probes of `/api/notion-sources` and `/api/notion-source-metadata` are not valid dashboard health checks: the former returned a server error when requested as a route, while the latter is not included in the deployed commit and returned 404. Neither endpoint is referenced by the current frontend.
 
 ## Protected Sync
 

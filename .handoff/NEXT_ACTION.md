@@ -4,11 +4,11 @@ Deployment is complete: commit `e3baa57` is Ready as `dpl_EW8yQz1QqjD58XzpEmfdHr
 
 The latest production deployment is `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU`; the live homepage returned HTTP 200 and `/api/dashboard-sync` returned HTTP 200 with Notion freshness metadata and 6 tasks / 6 stations.
 
-Current status: clean production deployment, HTTP route/API checks, and deployed-asset checks are complete. Authenticated production visual verification remains **NOT NOW** because My Browser navigation succeeds but screenshot, DOM view, and console artifact collection fail at the Chrome-extension layer.
+Current status: clean production deployment, HTTP route/API checks, deployed-asset checks, and post-deployment monitoring are complete. Authenticated production visual verification remains **NOT NOW** because My Browser navigation succeeds but screenshot, DOM view, and console artifact collection fail at the Chrome-extension layer; the alternative browser-console path is also unsupported.
 
 After UI testing, delete only the two labeled sample pages if they are no longer needed. Keep the source registry and typed property normalization.
 
-Secondary follow-ups: decide whether to delete the two `[DEV SAMPLE]` Money pages after UI review; then plan the typed property envelope and next approved Notion source discovery. Do not make either change as part of this verification pass.
+Next development cycle: first resolve the mirror freshness gap by running an approved protected Notion sync dry-run and recording source counts before any real mirror write. Next, review the typed property envelope plan and obtain the source-family authorization decision for Engineering Delivery before enabling it. Keep the two `[DEV SAMPLE]` Money pages until the authenticated UI review is complete.
 
 Decision on samples: keep both pages for now because authenticated visual verification remains blocked and the records are the current numeric Money regression fixture. The typed-envelope plan is documented in `docs/TYPED_PROPERTY_ENVELOPE_PLAN.md`; Engineering Delivery is the next candidate, pending a source-family authorization decision.
 
