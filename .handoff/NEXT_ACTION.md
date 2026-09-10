@@ -1,7 +1,9 @@
 # Next Action
 
-Production release is complete. Open `https://www.cr8w.com`, visit the team home, and test one source filter plus one search query against the Notion mirror panel.
+Create the metadata-driven Notion source registry and run a dry-run schema check for the existing Money data source.
 
-The dashboard will refresh the Supabase mirror read every 30 seconds while visible, slow down while hidden, and refresh when the tab becomes visible again.
+Confirm whether Money is empty because the source has no records, the integration lacks access, or the data-source ID is wrong. Capture property names and types without writing mirror data.
 
-Do not run another real Notion write unless source data changes or an explicit reconciliation is needed.
+Then define the approved Money display fields and typed custom-property contract before enabling new UI fields.
+
+Do not create a master/admin bypass. Do not run a real mirror write until the Money schema and sensitivity review pass.

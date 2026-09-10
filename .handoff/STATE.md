@@ -13,46 +13,39 @@
 
 The protected `api/notion-sync.ts` operator action writes the isolated Notion mirror keys. The read-only `api/dashboard-sync.ts` function returns operational dashboard data, all five Notion mirror collections, and freshness metadata from Supabase.
 
-The dashboard frontend now reads `/api/dashboard-sync`, propagates `notionMirrors` through `DashboardContext`, and renders `NotionMirrorSummary` on the team home page.
+The dashboard frontend reads `/api/dashboard-sync`, propagates `notionMirrors` through `DashboardContext`, and renders `NotionMirrorSummary` on the team home page.
 
-## Automatic Refresh
+## Automatic Refresh and Discovery
 
-The frontend polls the dashboard sync endpoint every 30 seconds while the tab is visible. It uses a small random jitter to avoid synchronized request bursts, backs off after failures up to five minutes, slows to two minutes while the tab is hidden, and triggers an immediate refresh when the tab becomes visible again.
+The frontend polls the dashboard sync endpoint every 30 seconds while the tab is visible. It uses jitter, backs off after failures up to five minutes, slows to two minutes while hidden, and triggers an immediate refresh when the tab becomes visible again.
 
-This is bounded polling, not a webhook. The current source-of-truth workflow remains safe because the dashboard reads the existing Supabase mirror and never writes to Notion from the browser.
+The Notion panel supports source filters across People, Flows, Moves, Content, Money, and All sources. Search is case-insensitive across source name, page ID, extracted record label, and serialized property values. Results are capped at 12 rendered cards.
 
-## Filtering and Search
+## Production and Sync Audit
 
-The Notion mirror panel supports source filters for People, Flows, Moves, Content, Money, and All sources. It also supports case-insensitive full-text search across source, stable page ID, extracted record label, and serialized property values. Results are capped at 12 rendered cards to keep the panel responsive while showing the total match count.
+Production deployment `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r` is Ready and aliased to `https://www.cr8w.com`.
 
-## Production Deployment
+The latest Vercel runtime log sample showed one successful `GET /api/dashboard-sync` request with HTTP 200. This confirms successful reads but is not enough to estimate sustained polling volume because no long-running browser session was active during the log window.
 
-Production deployment succeeded after adding a pnpm 10-compatible `pnpm-lock.yaml`. The first production attempt failed because Vercel’s frozen pnpm install detected a lockfile override mismatch. The lockfile was regenerated with pnpm 10, passed a local frozen install, committed, and redeployed.
+A direct Supabase mirror audit confirmed:
 
-Production deployment: `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r`
+| Mirror key | Records |
+| --- | ---: |
+| `cr8w_notion_mirror_people` | 13 |
+| `cr8w_notion_mirror_flows` | 3 |
+| `cr8w_notion_mirror_moves` | 4 |
+| `cr8w_notion_mirror_content` | 2 |
+| `cr8w_notion_mirror_money` | 0 |
 
-Production aliases:
+The sync metadata reports `source: notion`, `mirrorUpdatedAt: 2026-09-10T12:33:42.193Z`, `sourceLastEditedAt: 2026-09-10T11:33:00.000Z`, and the verified run ID. A production endpoint sample returned HTTP 200 in approximately 0.92 seconds with a 54.9 KB payload. The read function uses one Supabase query for the operational keys, freshness metadata, and mirror keys.
 
-- `https://www.cr8w.com`
-- `https://cr8w-dash-vfin.vercel.app`
-- `https://cr8w-dash-vfin-monnylog.vercel.app`
+## Authentication Boundary
 
-## Live Verification
+The application uses individual Supabase email/password accounts. No master password, hard-coded admin credential, or bypass is present. Do not add one. Use a dedicated development account through Register, or use a separate Supabase development project with a seeded test user. Server credentials and operator tokens must remain server-side and secret.
 
-- Vercel status: Ready.
-- `https://www.cr8w.com/`: HTTP 200.
-- `GET https://www.cr8w.com/api/dashboard-sync`: passed.
-- Freshness source: `notion`.
-- Mirror counts: PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, MONEY 0.
-- Production functions deployed: `api/dashboard-sync`, `api/notion-sync`, `api/server`, and `api/server/[[...path]]`.
+## Next Notion Source Iteration
 
-## Validation
-
-- Vite production build passed.
-- Esbuild parsing passed for dashboard-sync and notion-sync.
-- pnpm 10 frozen install passed.
-- Production deployment reached Ready.
-- Production homepage and read endpoint passed.
+The detailed plan is in `.handoff/NOTION_SOURCES_NEXT.md`. The recommended next step is a metadata-driven source registry. Money is already configured but has zero records, so validate its Notion data-source access and schema before changing the UI. Custom properties should move toward a backward-compatible typed property envelope, with sensitivity-aware display maps for financial data.
 
 ## Existing Unrelated Working-Tree Changes
 
