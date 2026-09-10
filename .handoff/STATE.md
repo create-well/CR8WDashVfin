@@ -24,6 +24,12 @@ The Geyser Moves route now mounts the extracted task and station components whil
 
 Validation completed locally: `pnpm build` passed; serial Vitest passed with 7 files and 34 tests; focused Playwright mutation coverage passed for task inline edit, station status update, and station creation; the full Playwright suite passed after stabilizing dashboard navigation on `domcontentloaded`.
 
+## Post-Deployment Verification
+
+- Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated visual inspection is **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, and rejected page DOM/console inspection with a Chrome-extension artifact error.
+- `GET /api/dashboard-sync` returned HTTP 200 in three direct probes. Total latency was 0.733s, 0.564s, and 0.704s; mean 0.667s; payload size 55,518 bytes. The response contained Notion freshness metadata, 6 tasks, 6 stations, 10 messages, and no forum records.
+- Vercel runtime logs for deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` showed four `/api/dashboard-sync` requests, all HTTP 200, with no recent error or fatal entries. Build logs show the Vite build completed and deployment reached Ready; pre-existing Vercel TypeScript diagnostics for missing Node types and Supabase auth typings were emitted but did not block deployment.
+
 ## Protected Sync
 
 A new `NOTION_SYNC_OPERATOR_TOKEN` was generated and stored as a Vercel Production Secret. The existing server-only `NOTION_API_KEY` was also added to Vercel Production because the function initially lacked it. The token was used locally for the approved sync request and removed from temporary local storage afterward.
