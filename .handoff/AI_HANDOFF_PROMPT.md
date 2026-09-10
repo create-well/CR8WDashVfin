@@ -1,0 +1,117 @@
+# CR8W Dashboard AI Handoff Prompt
+
+You are continuing work on `create-well/CR8WDashVfin`, the deployed internal Create Well team dashboard at `https://www.cr8w.com`.
+
+## Product goal
+
+Build a calm, fast, trustworthy team dashboard for Create Well. The frontend is optimized for team use. Notion is the operational source of truth. Supabase stores the read mirror, authentication data, calendar tokens, intake staging, and existing dashboard records. The browser must never write operational records directly to Notion.
+
+The dashboard should make the current state easy to see without asking the team to manage another database. Every synchronized view must show freshness clearly and must avoid presenting stale mirror data as current.
+
+## Repository and deployment
+
+- Repository: `create-well/CR8WDashVfin`
+- Local path: `/Users/monicablanco/Documents/GitHub/CR8WDashVfin`
+- Production domain: `https://www.cr8w.com`
+- Vercel project: `cr8w-dash-vfin`
+- Active branch: `feat/notion-freshness-contract`
+- Last registry commit: `a04530d8`
+- Production deployment before the registry change: `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r`
+- Do not stage or overwrite unrelated existing working-tree changes.
+
+## Source-of-truth boundary
+
+Notion owns operational truth. The protected server operator `api/notion-sync.ts` reads registered Notion data sources and writes isolated Supabase KV mirror keys. The read-only `api/dashboard-sync.ts` endpoint reads those mirror keys and returns dashboard data plus freshness metadata. The frontend polls the read endpoint while visible and never receives server credentials.
+
+The protected write endpoint requires:
+
+```text
+Authorization: Bearer <NOTION_SYNC_OPERATOR_TOKEN>
+```
+
+Never create a master password, hard-coded admin bypass, shared credential, or frontend secret. Use Supabase Auth individual accounts for human access. Keep `NOTION_API_KEY`, `NOTION_SYNC_OPERATOR_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_SECRET_KEY` server-side.
+
+## Current source registry
+
+The shared registry is in `api/notion-sources.ts`. It defines each source’s data-source ID, display label, enabled state, display fields, and sensitivity level. `api/notion-sync.ts` and `api/dashboard-sync.ts` derive their source lists and mirror keys from this registry.
+
+Registered sources:
+
+| Source | Data-source ID | Mirror key | Sensitivity |
+| --- | --- | --- | --- |
+| People | `b97bcbdf-2b1b-488d-9d07-4012b031732e` | `cr8w_notion_mirror_people` | team |
+| Flows | `c1677843-dd13-4e37-9f80-e960b26847dc` | `cr8w_notion_mirror_flows` | team |
+| Moves | `5597e583-f7df-4f6c-90b0-296a26c57454` | `cr8w_notion_mirror_moves` | team |
+| Content | `cd410d33-8052-4897-8226-3a3ca84ea8bc` | `cr8w_notion_mirror_content` | team |
+| Money | `55832c19-38fa-44cb-b4c2-0174b4c5b207` | `cr8w_notion_mirror_money` | restricted |
+
+## Current normalization
+
+`api/notion-sync.ts` explicitly normalizes Checkbox to boolean and Number to finite number or null. Existing handling covers title, rich text, select, status, multi-select, date, people, relation, unique ID, formula, and rollup.
+
+Live schema evidence:
+
+- Flows has Checkbox `Public?` and Number `Capacity`.
+- Content has Checkbox `Final?`.
+- Money has Number `Amount`.
+
+## Money test data
+
+The Money data source was initially empty. Two clearly labeled development records were added through the Notion API:
+
+- `[DEV SAMPLE] Money income test`, amount `123.45`, page ID `3d724acf-799d-812e-b26f-fb8a6d07e953`
+- `[DEV SAMPLE] Money expense test`, amount `-67.89`, page ID `3d724acf-799d-817d-baaf-eac706a5abd6`
+
+They were verified through a follow-up Notion API query. They have not yet been copied into Supabase because the protected operator token was not available to the current agent.
+
+## Current mirror state before the pending sync
+
+- People: 13
+- Flows: 3
+- Moves: 4
+- Content: 2
+- Money: 0
+
+Do not claim Money is synced until `GET /api/dashboard-sync` reports Money count 2 and freshness metadata has a newer `mirrorUpdatedAt`.
+
+## Frontend behavior
+
+The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visible. It slows while hidden, backs off after errors, and refreshes immediately when visible again. The Notion mirror panel supports source filters and case-insensitive search. Keep the current client-side search model while the payload remains small.
+
+## Safe next sequence
+
+1. Confirm production deployment for the registry is Ready.
+2. Use the protected operator token to call `POST https://www.cr8w.com/api/notion-sync` with `{ "dryRun": true }`.
+3. Verify the dry-run response reports Money count 2 and Amount values are preserved as numbers in the normalized snapshot if the response includes records.
+4. If correct, call the same endpoint with `{ "dryRun": false }`.
+5. Call `GET https://www.cr8w.com/api/dashboard-sync` and verify Money count 2, freshness source `notion`, and a new `mirrorUpdatedAt`.
+6. Keep the two sample records until UI testing is complete. Delete only those two pages afterward if requested.
+7. Validate Checkbox fields using Flows `Public?` or Content `Final?`, and validate Money `Amount` as a number.
+8. Record the deployment ID, sync run ID, counts, freshness, and test result in `.handoff/STATE.md` and `.handoff/VALIDATION.md`.
+
+## Efficiency thresholds
+
+The last production read sample was approximately 0.92 seconds and 54.9 KB with one Supabase query. Keep the 30-second visible-tab poll unless three active-use samples show a real request or latency problem. If the payload exceeds roughly 250 KB or the mirror grows beyond roughly 500 records, move search and pagination server-side.
+
+## Verification commands
+
+Use these commands from the local project directory. Never print secret values.
+
+```bash
+cd /Users/monicablanco/Documents/GitHub/CR8WDashVfin
+export VERCEL_SKIP_UPDATE_CHECK=1
+vercel --prod --yes
+curl --fail-with-body --silent --show-error \\
+  -X POST 'https://www.cr8w.com/api/notion-sync' \\
+  -H "Authorization: Bearer $NOTION_SYNC_OPERATOR_TOKEN" \\
+  -H 'Content-Type: application/json' \\
+  --data '{"dryRun":true}'
+curl --fail-with-body --silent --show-error \\
+  'https://www.cr8w.com/api/dashboard-sync'
+```
+
+Use a temporary secret file or environment variable. Remove it after the request. Do not add it to Git, chat, screenshots, or handoff files.
+
+## Output style
+
+Lead with the decision. State what passed, what is blocked, and the smallest next action. Do not blur Create Well with Take Home Studio. Do not modify unrelated working-tree files. Prefer one recommended path over a menu.

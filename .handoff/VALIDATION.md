@@ -1,33 +1,22 @@
 # Validation
 
-## Notion API
-
-The Money data source was readable through the Notion API with the configured server credential. It initially returned zero records. Two `[DEV SAMPLE]` pages were created with numeric Amount values and were returned by a follow-up data-source query.
-
-The Money schema includes an Amount number property. The registered Flows and Content schemas also expose Checkbox properties, confirming that the new normalizer paths correspond to live Notion property types.
-
-## Code
-
-Added `api/notion-sources.ts` as the shared metadata-driven source registry. The operator sync and dashboard read endpoint now derive enabled sources and mirror keys from the registry.
-
-Added explicit Checkbox and Number handling in `api/notion-sync.ts`:
-
-- Checkbox becomes a boolean.
-- Number becomes a finite number or null.
-
-## Passed
+## Production
 
 | Check | Result |
 | --- | --- |
-| Notion Money schema request | Pass |
-| Notion Money query before samples | Pass, 0 records |
-| Notion sample creation | Pass, 2 records |
-| Notion sample verification | Pass, amounts 123.45 and -67.89 |
-| Checkbox/Number schema scan | Pass |
-| Vite production build | Pass |
-| Server function parsing | Pass |
-| Temporary script cleanup | Pass |
+| Registry deployment | Ready |
+| Deployment ID | `dpl_GskSjJ3nLg2jYeiWAUXK2K4Gf9ue` |
+| Production alias | `https://www.cr8w.com` |
+| Source registry included | Yes |
+| Checkbox normalization included | Yes |
+| Number normalization included | Yes |
 
-## Not Yet Done
+## Protected Sync
 
-The protected operator sync was not called, so Supabase still has the previous Money mirror count of 0. Production deployment of this registry change has not occurred yet.
+The protected Notion operator request was not executed because Vercel does not permit production secret values to be pulled by `vercel env pull`. The endpoint still requires `NOTION_SYNC_OPERATOR_TOKEN`. No bypass, shared password, or secret exposure was used.
+
+The Money sample records were verified directly through the Notion API, but the Supabase Money mirror remains at 0 until the protected sync runs.
+
+## Handoff
+
+`AI_HANDOFF_PROMPT.md` is complete and includes the exact safe continuation sequence for dry-run, real mirror refresh, verification, cleanup, and performance checks.
