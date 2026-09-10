@@ -22,11 +22,12 @@ function resolveApiBase(): string {
 }
 
 const BASE = resolveApiBase();
+const DASHBOARD_SYNC_BASE = BASE.endsWith('/api/server') ? BASE.slice(0, -'/server'.length) : BASE;
 
 // Auth header: required by Supabase edge function; Vercel routes ignore it.
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
 
-async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
   const maxRetries = method === 'GET' ? 1 : 0;
   // Shorter timeout: surface offline state in ≤8 s instead of 30 s.
@@ -37,7 +38,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(`${BASE}${path}`, {
+      const res = await fetch(`${base}${path}`, {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -67,7 +68,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 // Sync
-export const sync = () => req<SyncData>('GET', '/sync');
+export const sync = () => req<SyncData>('GET', '/dashboard-sync', undefined, DASHBOARD_SYNC_BASE);
 
 // Tasks
 export const getTasks = () => req<Task[]>('GET', '/tasks');
@@ -304,7 +305,25 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  notionMirrors?: NotionMirrors;
   freshness?: SyncFreshness;
+}
+
+export interface NotionMirrorRecord {
+  source: 'people' | 'flows' | 'moves' | 'content' | 'money';
+  sourcePageId: string;
+  sourceUrl: string | null;
+  sourceLastEditedAt: string | null;
+  archived: boolean;
+  properties: Record<string, unknown>;
+}
+
+export interface NotionMirrors {
+  people: NotionMirrorRecord[];
+  flows: NotionMirrorRecord[];
+  moves: NotionMirrorRecord[];
+  content: NotionMirrorRecord[];
+  money: NotionMirrorRecord[];
 }
 
 export interface SyncFreshness {

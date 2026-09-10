@@ -1,26 +1,23 @@
 # Validation
 
-## Final Result
+## UI Slice
 
-The approved separate `NOTION_SYNC_OPERATOR_TOKEN` design is active in Vercel Preview. The operator token is stored as a hidden Preview Secret and is not present in source control.
+Added `api/dashboard-sync.ts` as a read-only dashboard data boundary. It returns operational data, all five Notion mirror collections, and freshness metadata from Supabase.
 
-The dry-run request passed with `writes: 0`, `recordsSeen: 22`, and counts of PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, and MONEY 0.
-
-The approved real request passed with `dryRun: false`, `writes: 6`, `recordsSeen: 22`, and the same counts. Run ID: `notion-1789043618742-1b5bad40`.
-
-Direct Supabase REST verification confirmed the five isolated mirror keys and `cr8w_notion_sync_meta` are present. The stored metadata reports `source: notion`, `mirrorUpdatedAt: 2026-09-10T12:33:42.193Z`, `sourceLastEditedAt: 2026-09-10T11:33:00.000Z`, and the verified run ID.
+Updated the client sync method to call `/api/dashboard-sync`, typed the mirror record contract, propagated mirrors through `DashboardContext`, and mounted `NotionMirrorSummary` on the team home page.
 
 ## Passed
 
-- Vite production build.
-- Esbuild parse for `api/notion-sync.ts`.
-- Dry-run source counts.
-- Real Notion read and isolated Supabase mirror write.
-- Direct Supabase count and freshness verification.
-- No legacy operational keys written.
-- Temporary diagnostic scripts removed.
-- Temporary local operator-token file removed.
+- `git diff --check`
+- `./node_modules/.bin/vite build`
+- `./node_modules/.bin/esbuild api/dashboard-sync.ts --platform=node --format=esm`
 
-## Existing Gaps
+The build includes the new panel in the ThisWeek page bundle. Existing warnings remain for the AuthGate import pattern and the large application chunk.
 
-The repository has no project `tsconfig*.json`; the installed TypeScript 4.9 compiler cannot parse newer Node declaration syntax. Vitest is not installed. Existing Vite warnings remain for the AuthGate import pattern and the large application chunk. The existing `/api/server/*` route still returns the legacy health response for nested paths; `/api/notion-sync` is the canonical operator endpoint.
+## Required Preview Check
+
+After push, call `GET /api/dashboard-sync` on the new preview. Verify `freshness.source` is `notion`, all five mirror keys are represented, and counts are 13, 3, 4, 2, and 0. Then inspect the team home panel.
+
+## Scope Protection
+
+Only the explicit dashboard sync function, API contract, dashboard context, home page, mirror summary component, and handoff files belong in this slice. Existing deletions, environment files, lockfile changes, and unrelated untracked feature/test files remain unstaged.
