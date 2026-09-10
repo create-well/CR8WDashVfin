@@ -255,6 +255,49 @@ async function fetchSource(source: NotionSourceKey, config: { dataSourceId: stri
   return records;
 }
 
+export async function runSync(dryRun: boolean, entries: [NotionSourceKey, NotionSourceConfig][] = ENABLED_NOTION_SOURCES) {
+  const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const db = database();
+  const previousMeta = await readMirrorMeta(db);
+  const completedAt = new Date().toISOString();
+
+  const validationErrors: NotionValidationIssue[] = [];
+  const sourceResults: SourceSyncResult[] = await Promise.all(entries.map(async ([source, config]) => {
+    try {
+      const records = await fetchSource(source, config);
+      const issues = records.flatMap((record, index) => validateMirrorRecord(record, config.typedProperties)
+        .map(issue => ({ ...issue, path: `${source}[${index}].${issue.path}` })));
+      if (issues.length) {
+        validationErrors.push(...issues);
+        const preview = issues.slice(0, 3).map(issue => `${issue.path}: ${issue.message}`).join('; ');
+        return { source, records: null, error: `Contract validation failed: ${preview}${issues.length > 3 ? ` (+${issues.length - 3} more)` : ''}` };
+      }
+      return { source, records, error: null };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Source sync failed';
+      return { source, records: null, error: message };
+    }
+  }));
+
+  const { sourceFreshness, successful, failed, recordsSeen, counts, latestSourceEdit } = summarizeSourceResults(sourceResults, previousMeta.sourceFreshness, completedAt);
+  const typedSources = successful.filter(result => NOTION_SOURCES[result.source].typedProperties).map(result => result.source);
+
+  if (!dryRun) {
+    for (const result of successful) await writeMirror(db, `cr8w_notion_mirror_${result.source}`, result.records);
+    await writeMirror(db, 'cr8w_notion_sync_meta', {
+      source: 'notion',
+      mirrorUpdatedAt: successful.length ? completedAt : previousMeta.mirrorUpdatedAt,
+      sourceLastEditedAt: latestSourceEdit,
+      syncRunId: runId,
+      counts,
+      sourceFreshness,
+      recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION,
+      typedSources,
+    });
+  }
+  return { ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, sourceFreshness, recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION, typedSources, validationErrors, failedSources: failed.map(result => ({ source: result.source, error: result.error })), writes: dryRun ? 0 : successful.length + 1 };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -267,47 +310,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const request = req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {};
     const dryRun = request.dryRun !== false;
     const selection = resolveSourceEntries(request.sources);
-    if (selection.error) { res.status(400).json({ error: selection.error }); return; }
-    const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-    const db = database();
-    const previousMeta = await readMirrorMeta(db);
-    const completedAt = new Date().toISOString();
-
-    const validationErrors: NotionValidationIssue[] = [];
-    const sourceResults: SourceSyncResult[] = await Promise.all(selection.entries.map(async ([source, config]) => {
-      try {
-        const records = await fetchSource(source, config);
-        const issues = records.flatMap((record, index) => validateMirrorRecord(record, config.typedProperties)
-          .map(issue => ({ ...issue, path: `${source}[${index}].${issue.path}` })));
-        if (issues.length) {
-          validationErrors.push(...issues);
-          const preview = issues.slice(0, 3).map(issue => `${issue.path}: ${issue.message}`).join('; ');
-          return { source, records: null, error: `Contract validation failed: ${preview}${issues.length > 3 ? ` (+${issues.length - 3} more)` : ''}` };
-        }
-        return { source, records, error: null };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Source sync failed';
-        return { source, records: null, error: message };
-      }
-    }));
-
-    const { sourceFreshness, successful, failed, recordsSeen, counts, latestSourceEdit } = summarizeSourceResults(sourceResults, previousMeta.sourceFreshness, completedAt);
-    const typedSources = successful.filter(result => NOTION_SOURCES[result.source].typedProperties).map(result => result.source);
-
-    if (!dryRun) {
-      for (const result of successful) await writeMirror(db, `cr8w_notion_mirror_${result.source}`, result.records);
-      await writeMirror(db, 'cr8w_notion_sync_meta', {
-        source: 'notion',
-        mirrorUpdatedAt: successful.length ? completedAt : previousMeta.mirrorUpdatedAt,
-        sourceLastEditedAt: latestSourceEdit,
-        syncRunId: runId,
-        counts,
-        sourceFreshness,
-        recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION,
-        typedSources,
-      });
-    }
-    res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, sourceFreshness, recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION, typedSources, validationErrors, failedSources: failed.map(result => ({ source: result.source, error: result.error })), writes: dryRun ? 0 : successful.length + 1 });
+    if (selection.entries === null) { res.status(400).json({ error: selection.error }); return; }
+    res.json(await runSync(dryRun, selection.entries));
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Notion sync failed' });
   }

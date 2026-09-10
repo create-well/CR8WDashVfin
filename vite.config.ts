@@ -43,6 +43,7 @@ export default defineConfig({
           if (id.includes('/recharts/') || id.includes('/d3-')) return 'vendor-charts'
           if (id.includes('/@supabase/')) return 'vendor-supabase'
           if (id.includes('/@radix-ui/')) return 'vendor-radix'
+          if (id.includes('/lucide-react/')) return 'vendor-icons'
           return 'vendor'
         },
       },

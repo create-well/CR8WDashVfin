@@ -64,6 +64,8 @@ export const NOTION_SOURCES = {
 export type NotionSourceKey = keyof typeof NOTION_SOURCES;
 export type NotionSourceConfig = typeof NOTION_SOURCES[NotionSourceKey];
 export type NotionPropertySensitivity = 'public' | 'team' | 'restricted';
+// Alias kept for main-branch compatibility; new code should use NotionPropertySensitivity.
+export type NotionSourceSensitivity = NotionSourceConfig['sensitivity'];
 
 export const ENABLED_NOTION_SOURCES = Object.entries(NOTION_SOURCES).filter(([, source]) => source.enabled) as [NotionSourceKey, NotionSourceConfig][];
 

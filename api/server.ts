@@ -5,6 +5,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import notionSyncHandler from './notion-sync.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function supabase() {
@@ -147,29 +148,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (resource === 'notion-sync' && method === 'POST') {
-      if (!canRunNotionSync(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
-      const request = await body(req);
-      const dryRun = request?.dryRun !== false;
-      const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-      const snapshots: Record<string, any[]> = {};
-      let recordsSeen = 0;
-      let latestSourceEdit: string | null = null;
-
-      for (const [source, dataSourceId] of Object.entries(NOTION_SOURCES)) {
-        const records = await fetchNotionSource(source, dataSourceId);
-        snapshots[source] = records;
-        recordsSeen += records.length;
-        for (const record of records) {
-          if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt;
-        }
-      }
-
-      const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
-      if (!dryRun) {
-        for (const [source, records] of Object.entries(snapshots)) await kvSet(`cr8w_notion_mirror_${source}`, JSON.stringify(records));
-        await kvSet('cr8w_notion_sync_meta', JSON.stringify({ source: 'notion', mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts }));
-      }
-      res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 }); return;
+      req.body = await body(req);
+      await notionSyncHandler(req, res);
+      return;
     }
 
     // ── Sync ──────────────────────────────────────────────────────────────────

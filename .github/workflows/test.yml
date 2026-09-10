@@ -31,10 +31,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run node:test suites
-        run: node --test tests/*.test.mjs && npm run test:contract
+        run: node --test tests/*.test.mjs
+
+      - name: Run TypeScript tests
+        run: npm run test:ts
 
       - name: Run Vitest suite
         run: npm test
 
-      - name: Build production assets
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Production build
         run: npm run build

@@ -303,10 +303,11 @@ export function getEventColor(type: string, personColor?: string) {
   const colors: Record<string, string> = { bhd: '#6B5344', cr8w: '#7BA89D', personal: personColor || '#D4A5A5', launch: '#D46B6B' };
   return colors[type] || '#A89888';
 }
-export function getDaysToLaunch() {
-  const launch = new Date('2026-04-15T00:00:00');
+export function getDaysToLaunch(targetDate: string | Date = '2026-04-15T00:00:00') {
+  const launch = new Date(targetDate);
   const now = new Date();
-  return Math.ceil((launch.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = (launch.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays >= 0 ? Math.ceil(diffDays) : -Math.floor(Math.abs(diffDays));
 }
 export function getDayOfYear(date: Date) {
   const start = new Date(date.getFullYear(), 0, 0);

@@ -358,6 +358,26 @@ export interface NotionMirrorRecord {
   properties: Record<string, unknown | NotionPropertyValue>;
 }
 
+export interface NotionPropertyValue {
+  type: string;
+  value: unknown;
+  displayValue: string;
+  sensitivity: 'team' | 'restricted';
+}
+
+export interface NotionSourceMetadata {
+  key: string;
+  label: string;
+  visible: boolean;
+  searchable: boolean;
+  sensitivity: 'team' | 'restricted';
+  displayFields: string[];
+  recordCount: number;
+  dataSourceId?: string;
+  archived?: boolean;
+  properties?: Record<string, string>;
+}
+
 export interface NotionMirrors {
   people: NotionMirrorRecord[];
   flows: NotionMirrorRecord[];
