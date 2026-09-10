@@ -4,9 +4,9 @@
 
 Iteration 4 from `NOTION_SOURCES_NEXT.md` is implemented on `feat/notion-freshness-contract`, uncommitted. `NotionMirrorSummary.tsx` now derives its source list, labels, and filter options from the server-sent `notionSources` registry metadata (key, label, visible, recordCount) via a new exported `sourceCollections(mirrors, sources)` helper, falling back to the static label table only when no metadata has arrived. `ThisWeekPage` passes `data.notionSources` through. Money cards now render the numeric `Amount` below the record name through `moneyAmountDisplay(record)` (typed envelope or plain number; no currency until the schema provides one; null-safe for missing or non-finite values).
 
-Validation under heavy machine load (load avg 4.8–6.8, Spotlight and Docker pinning cores): vitest workers could not start within their 60 s window across forks, threads, and single-worker modes, so the 15 assertions in `NotionMirrorSummary.test.ts` were executed through a temporary esbuild harness (`scripts/validate-mirror-summary.mjs`, vitest import shimmed) — all 15 passed. `pnpm build` passed (2,141+ modules, built in 7m 36s under the same load). Re-run the real Vitest suite when the machine settles: `npx vitest run --maxWorkers=1 src/app/components/__tests__/NotionMirrorSummary.test.ts`, then the full serial suite, before deploying.
+Validation is complete as of 2026-09-10 ~14:07: the esbuild fallback passed all 15 assertions, and the real Vitest suite then passed cleanly once a concurrent IDE vitest run on this repo cleared — focused file 15/15, full serial suite 8 files / 50 tests. `pnpm build` passed earlier in the session. The commit is `6e6213b` on `feat/notion-freshness-contract`.
 
-Next steps in order: commit only the touched files (`src/app/components/NotionMirrorSummary.tsx`, `src/app/components/__tests__/NotionMirrorSummary.test.ts`, `src/app/pages/ThisWeekPage.tsx`, optionally `scripts/validate-mirror-summary.mjs`), re-run Vitest normally, deploy once from a clean committed checkout, verify one live authenticated render of the mirror panel showing Money amounts.
+Next steps in order: deploy once from a clean committed checkout, verify one live authenticated render of the mirror panel showing Money amounts, then record the deployment ID here.
 
 ## Prior state
 
