@@ -94,3 +94,20 @@ Do not delete the two Money samples in this pass. Do not enable another Notion s
 [5]: https://app.notion.com/p/ca2b83fee6cd4fed9a1d202ed5f6862c?pvs=204 "CR8W Engineering Delivery data source"
 
 Authored by Manus AI.
+
+
+## Master System schema capture — 2026-09-10
+
+The linked [Create Well OS — Master System](https://app.notion.com/p/7b4774c7e9ad4333841dd757a4b1c1df) is the canonical conceptual map. It defines one strategic spine, five stages, and the transition from a current to a dated flow. The strategic spine data source is `collection://7c9cfca0-378f-455e-bba8-6debc6ce334c`, titled `🌊 Create Well OS — Master`.
+
+The spine schema includes title and text fields (`Name`, `What it holds`, `What needs tending`, `Next gentle move`, `Holding agreement`, `What returns to Source`, and `What the water taught us`), select fields (`Kind`, `Layer`, `Rhythm`, `Runway`, `Stage`, `Water state`, and `Call`), person field (`Held by`), relation fields (`Currents` and `Lives in`), and a date field (`Date`) represented by the expanded columns `date:Date:start`, `date:Date:end`, and `date:Date:is_datetime`. The envelope must preserve those expanded date columns as one `date` value and preserve relation targets as stable IDs rather than names.
+
+The Master System page maps the current operational registry as FLOWS (`collection://c1677843-dd13-4e37-9f80-e960b26847dc`), MOVES (`collection://5597e583-f7df-4f6c-90b0-296a26c57454`), MONEY (`collection://55832c19-38fa-44cb-b4c2-0174b4c5b207`), CONTENT (`collection://cd410d33-8052-4897-8226-3a3ca84ea8bc`), and PEOPLE (`collection://b97bcbdf-2b1b-488d-9d07-4012b031732e`). Their typed mapping order is: title/text and IDs first; select, status, multi-select, checkbox, number, and date values next; relations and people as stable IDs; and URLs, email, phone, formula, rollup, and audit timestamps with sensitivity-aware exposure.
+
+The Master System does not replace the approved Engineering Delivery source decision. Engineering Delivery remains the next restricted source for authorization and schema capture, while the strategic spine and the five operational sources remain separate source-registry decisions. No new source was enabled and no mirror write was performed in this pass.
+
+## Engineering Delivery capture checkpoint — 2026-09-10
+
+The approved source is `CR8W Engineering Delivery`, data source ID `eb498877-a74f-4abe-bac3-8d1dfbc62db8`, with page/database reference `https://app.notion.com/p/ca2b83fee6cd4fed9a1d202ed5f6862c`. Its schema is: `Name` title; `Stage` select with `Ready`, `Building`, `Review`, `Blocked`, `Verified`, and `Dropped`; `Surface` multi-select with `UI`, `API`, `Data/Sync`, and `Platform`; `Target` date; `Owner` person; `Blocked By` text; `GitHub PR`, `Acceptance Evidence`, `API Contract`, and `UI Spec` URLs; and `Last Updated` last-edited-time.
+
+A bounded read-only aggregate query found one non-archived record in `Blocked` stage. Record contents, owner identity, blocker text, and URLs are not repeated here because the source is restricted. The source remains registered and typed, but it must not be included in an unauthorized dashboard payload.

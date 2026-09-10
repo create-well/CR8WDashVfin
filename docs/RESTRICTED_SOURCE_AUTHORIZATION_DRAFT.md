@@ -170,3 +170,12 @@ No real mirror write or restricted-source exposure is authorized by this draft.
 ## Status
 
 **NOT NOW:** This document is a design draft only. It does not change source authorization, dashboard behavior, or Notion/Supabase data.
+
+
+## Authorization and schema evidence checkpoint — 2026-09-10
+
+The linked [Create Well OS — Master System](https://app.notion.com/p/7b4774c7e9ad4333841dd757a4b1c1df) was reviewed as the canonical system map. It confirms the strategic spine and the five operational databases—FLOWS, MOVES, MONEY, CONTENT, and PEOPLE—but does not change the separate Engineering Delivery authorization decision.
+
+The approved Engineering Delivery data source was fetched read-only from `collection://eb498877-a74f-4abe-bac3-8d1dfbc62db8`. Its exact schema is captured above in this document. A bounded aggregate query returned one non-archived record in `Blocked` stage. No record payload, relation name, owner identity, blocker text, or URL was written to logs or client-facing artifacts. No Notion or mirror write was performed.
+
+This remains a design and schema-capture checkpoint. The source is **not authorized for dashboard exposure** until a server-managed grant or role is implemented and tested with fail-closed behavior. The smallest next implementation is server-side Supabase token validation, capability derivation for `notion:engineeringDelivery:read`, source-level omission for unauthorized callers, private no-store caching headers, and authorization tests covering normal and legacy API routes.
