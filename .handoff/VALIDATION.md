@@ -2,29 +2,26 @@
 
 ## Latest Implementation
 
-Added `api/notion-sync.ts` as an explicit Vercel function route. This avoids the project's `/api/server/*` nested path ambiguity. The function is protected by the existing publishable-key authorization, reads `NOTION_API_KEY` only at runtime, defaults to dry-run, and writes isolated mirror keys only when explicitly requested.
+The explicit `api/notion-sync.ts` function is deployed at `/api/notion-sync`. It avoids the ambiguous `/api/server/*` routing in this project.
 
 ## Passed
 
 - `git diff --check`
 - `./node_modules/.bin/vite build`
 - `./node_modules/.bin/esbuild api/notion-sync.ts --platform=node --format=esm`
-- `./node_modules/.bin/esbuild api/server.ts --platform=node --format=esm`
-- `./node_modules/.bin/esbuild api/server/[[...path]].ts --platform=node --format=esm`
-- Live Notion API schema inspection for all five sources.
+- Vercel preview deployment reached READY.
+- `POST /api/notion-sync` reached the intended function.
 
-## Preview Gate
+## Blocked Safely
 
-Requests to `/api/server/notion-sync` on two READY previews returned the legacy health response, proving that route was not the correct operator endpoint. Those requests used dry-run intent and performed no mirror write. The next preview must use `/api/notion-sync`.
+The preview returned `401 Unauthorized` because it has no matching public Supabase key environment variable. The endpoint did not call Notion and did not write Supabase mirror keys. This is the correct failure mode.
+
+Accepted server-side public-key variable names are `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_ANON_KEY`. Prefer `SUPABASE_PUBLISHABLE_KEY` in Vercel preview settings.
 
 ## Security Scope
 
-The Notion token was never printed, committed, or written into a project artifact. The new endpoint returns counts and run metadata only, not page content. The first real mirror write remains blocked until the explicit endpoint's dry-run response is reviewed.
+No credential was printed, committed, or embedded. The service-role key was not used as the operator token. A real mirror write was not attempted.
 
 ## Existing Gaps
 
 The repository has no project `tsconfig*.json`; the installed TypeScript 4.9 compiler cannot parse newer Node declaration syntax. Vitest is not installed. Existing Vite warnings remain for the AuthGate import pattern and the large application chunk.
-
-## Working Tree Scope
-
-Only `api/notion-sync.ts` and the three handoff files are intended for the next commit. Existing deletions, `.env.production`, lockfile changes, and untracked feature/test files remain unstaged.

@@ -6,38 +6,30 @@
 - Production role: deployed source for `cr8w.com`, confirmed by project owner on 2026-09-10.
 - Current branch: `feat/notion-freshness-contract`, pushed to GitHub.
 - Vercel project: `cr8w-dash-vfin`.
-- The working tree contained user changes before this task. They remain uncommitted and untouched.
-- Notion workspace: `co-monny`, accessed through the configured connector and the local server-only `NOTION_API_KEY` secret reference.
 - Notion owns operational truth. Supabase is the read-only mirror plus auth, calendar tokens, and intake staging.
+- Existing user changes remain uncommitted and untouched.
 
 ## Completed Slice
 
-The dashboard accepts optional `cr8w_notion_sync_meta` metadata from the sync endpoint. It exposes `source`, `mirrorUpdatedAt`, `sourceLastEditedAt`, and `syncRunId` through the typed dashboard payload. The status bar separately reports dashboard fetch time and Notion mirror write time. Missing metadata is shown as unavailable, not fresh.
+The dashboard accepts optional `cr8w_notion_sync_meta` metadata from the sync endpoint and reports dashboard fetch time separately from Notion mirror write time.
 
-The explicit Vercel function `api/notion-sync.ts` now owns `POST /api/notion-sync`. It reads the five confirmed Notion data sources, paginates to completion, normalizes properties while preserving stable page IDs, and defaults to dry-run. With `dryRun: false`, it writes only isolated mirror keys and writes `cr8w_notion_sync_meta` last. It never writes legacy operational keys.
+The explicit Vercel function `api/notion-sync.ts` owns `POST /api/notion-sync`. It reads the five confirmed Notion data sources, paginates to completion, normalizes properties while preserving stable page IDs, and defaults to dry-run. With `dryRun: false`, it writes only isolated mirror keys and writes `cr8w_notion_sync_meta` last. It never writes legacy operational keys.
 
-The earlier `/api/server/notion-sync` route attempt was not usable because this project routes `/api/server/*` through the exact handler without reliable nested path variables. The new explicit route removes that ambiguity. The existing server handler retains freshness response support.
+The explicit route is now reachable on preview. Its authorization gate returns `401` because the preview environment does not expose one of the accepted public-key variables: `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PUBLISHABLE_KEY`, or `SUPABASE_ANON_KEY`.
 
-## Preview Finding
+## Blocked Action
 
-The first two preview attempts to `/api/server/notion-sync` returned the legacy health response. No mirror write occurred. The explicit route is ready for the next preview deployment.
+No Notion records were read by the preview endpoint and no Supabase mirror write occurred. Do not bypass this gate by embedding the public key in server code or by using the service-role key as a client authorization token.
 
-## Risks
+## Next Action
 
-- The adapter is not deployed or invoked against Supabase yet. Live writes require an authenticated request with `dryRun: false`.
-- The endpoint stores normalized source snapshots in the existing KV table because no dedicated mirror schema is present. This is an isolated mirror namespace, not a replacement for a relational mirror.
-- Existing operational CRUD routes remain in the codebase and are outside this slice.
-- Existing working tree contains tracked deletions, untracked files, and an environment file. Secrets are not recorded here.
+Configure one server-side public-key variable in the Vercel preview environment, preferably `SUPABASE_PUBLISHABLE_KEY`, or provide a separate protected `NOTION_SYNC_OPERATOR_TOKEN` design. Then rerun `POST /api/notion-sync` with `{ "dryRun": true }`. Keep `dryRun: false` blocked until counts are reviewed.
 
 ## Validation
 
 - `git diff --check`: passed.
-- `./node_modules/.bin/vite build`: passed after the explicit route was added.
-- `./node_modules/.bin/esbuild api/notion-sync.ts --platform=node --format=esm`: passed.
-- Existing handlers also parse with esbuild after the iCalendar literal repair.
-- Live Notion API schema inspection passed for PEOPLE, FLOWS, MOVES, CONTENT, and MONEY.
-- Existing Vite warnings remain: AuthGate dynamic/static import and a large application chunk.
-
-## Next Action
-
-Push the explicit route, wait for the new preview, then call `POST /api/notion-sync` with `{ "dryRun": true }` using the app publishable key. Do not call `dryRun: false` yet.
+- Vite production build: passed.
+- esbuild parse for `api/notion-sync.ts`: passed.
+- Explicit preview route: reachable.
+- Authorization behavior: correctly rejected missing preview key configuration with `401`.
+- No external data mutation occurred.

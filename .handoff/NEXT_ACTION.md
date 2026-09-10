@@ -1,12 +1,11 @@
 # Next Action
 
-Push the explicit `api/notion-sync.ts` route and wait for a new Vercel preview. Call `POST /api/notion-sync` with `{ "dryRun": true }` using the app's publishable-key authorization.
+Configure the Vercel preview environment with `SUPABASE_PUBLISHABLE_KEY`, or approve a separate protected `NOTION_SYNC_OPERATOR_TOKEN` design. Then redeploy the preview and call `POST /api/notion-sync` with `{ "dryRun": true }`.
 
 Acceptance criteria:
 
-1. The preview endpoint no longer returns the legacy health response.
-2. The endpoint requires authorization.
-3. Dry-run returns `ok: true` and `writes: 0`.
-4. Counts match the live Notion source inspection.
-5. No Supabase mirror keys change during dry-run.
-6. Only after the dry-run response is reviewed should a real `{ "dryRun": false }` request be considered.
+1. The endpoint returns `ok: true`.
+2. The response reports `writes: 0`.
+3. Counts match the live Notion source inspection.
+4. No Supabase mirror keys change during dry-run.
+5. A real `{ "dryRun": false }` request remains blocked until the dry-run counts are reviewed.
