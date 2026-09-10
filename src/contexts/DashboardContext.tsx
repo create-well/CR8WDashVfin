@@ -5,7 +5,7 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
-import type { NotionMirrors } from '../app/components/api';
+import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
 } from '../app/components/data';
@@ -49,6 +49,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
   const [notionMirrors, setNotionMirrors] = useState<NotionMirrors>({ people: [], flows: [], moves: [], content: [], money: [] });
+  const [notionSources, setNotionSources] = useState<NotionSourceMetadata[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -139,6 +140,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
         if (data.notionMirrors) setNotionMirrors(data.notionMirrors);
+        if (data.notionSources) setNotionSources(data.notionSources);
         if (data.freshness) setFreshness(data.freshness);
         setSyncStatus('fresh');
         setLastSynced(new Date());
@@ -569,6 +571,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowCheckins,
     wellNotes,
     notionMirrors,
+    notionSources,
     syncStatus: computedSyncStatus,
     lastSynced,
     freshness,

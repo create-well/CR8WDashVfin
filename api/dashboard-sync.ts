@@ -56,6 +56,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mirrors = Object.fromEntries(
       ENABLED_NOTION_SOURCES.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`])]),
     );
+    const notionSources = ENABLED_NOTION_SOURCES.map(([key, config]) => ({
+      key,
+      label: config.label,
+      visible: config.visible,
+      searchable: config.searchable,
+      sensitivity: config.sensitivity,
+      displayFields: config.displayFields,
+      recordCount: mirrors[key]?.length ?? 0,
+    }));
 
     res.json({
       tasks: parseList(values.cr8w_tasks),
@@ -73,6 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       wellNotes: parseList(values.cr8w_well_notes),
       calendarEvents: parseList(values.cr8w_calendar_events),
       notionMirrors: mirrors,
+      notionSources,
       freshness: {
         source: freshness.source === 'notion' ? 'notion' : 'unknown',
         mirrorUpdatedAt: typeof freshness.mirrorUpdatedAt === 'string' ? freshness.mirrorUpdatedAt : null,

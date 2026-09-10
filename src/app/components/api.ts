@@ -306,6 +306,7 @@ export interface SyncData {
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
   notionMirrors?: NotionMirrors;
+  notionSources?: NotionSourceMetadata[];
   freshness?: SyncFreshness;
 }
 
@@ -316,6 +317,26 @@ export interface NotionMirrorRecord {
   sourceLastEditedAt: string | null;
   archived: boolean;
   properties: Record<string, unknown>;
+}
+
+export interface NotionPropertyValue {
+  type: string;
+  value: unknown;
+  displayValue: string;
+  sensitivity: 'team' | 'restricted';
+}
+
+export interface NotionSourceMetadata {
+  key: string;
+  label: string;
+  visible: boolean;
+  searchable: boolean;
+  sensitivity: 'team' | 'restricted';
+  displayFields: string[];
+  recordCount: number;
+  dataSourceId?: string;
+  archived?: boolean;
+  properties?: Record<string, string>;
 }
 
 export interface NotionMirrors {

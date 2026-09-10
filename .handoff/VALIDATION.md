@@ -25,3 +25,24 @@ Reviewed and corrected `AI_HANDOFF_PROMPT.md`:
 ## Next Iteration Plan
 
 `NOTION_SOURCES_NEXT.md` now prioritizes a typed property envelope, a protected source discovery manifest, one approved new database at a time, registry-driven UI metadata, visible Money amounts, and payload thresholds for moving search server-side.
+
+
+## Typed-contract validation update
+
+The desktop sidecar was unavailable, and the mounted path contained only the component and handoff artifacts. Validation was completed in `/home/ubuntu/CR8WDashVfin-validation`, cloned from `create-well/CR8WDashVfin` on `feat/notion-freshness-contract`.
+
+The typed property slice now includes the protected `api/notion-source-metadata.ts` endpoint, registry-driven source metadata in `api/dashboard-sync.ts`, typed Money normalization in `api/notion-sync.ts`, frontend contracts, context wiring, and dynamic source filters with USD Money cards.
+
+| Check | Status |
+| --- | --- |
+| Frontend production build | Pass |
+| Changed API files parsed with esbuild | Pass |
+| `git diff --check` | Pass |
+| Production deploy from this slice | Not run |
+| Protected metadata endpoint against production | Not run |
+| Production dashboard endpoint after this slice | Not run |
+| Browser UI check after this slice | Not run |
+
+The build retains the pre-existing large-chunk warning: the main JavaScript chunk is approximately 951 kB minified. Defer code-splitting until measured active-use performance shows a problem.
+
+Do not claim this slice is production-ready until the pushed commit is deployed, the protected metadata endpoint is checked, `GET /api/dashboard-sync` confirms source metadata and Money count 2, and the Money card visual check passes.

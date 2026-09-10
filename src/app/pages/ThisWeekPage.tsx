@@ -68,7 +68,7 @@ export function ThisWeekPage() {
         actionItems={data.tasks}
         stations={data.stations}
       />
-      <NotionMirrorSummary mirrors={data.notionMirrors} freshness={data.freshness} />
+      <NotionMirrorSummary mirrors={data.notionMirrors} freshness={data.freshness} sources={data.notionSources} />
       {showAddTask && (
         <AddTaskModal
           currentPerson={null}
