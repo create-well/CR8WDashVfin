@@ -1,31 +1,27 @@
 # Validation
 
-## Production Deployment
+## Production Money Filter Test
 
-| Check | Result |
-| --- | --- |
-| Final deployment | Ready |
-| Deployment ID | `dpl_G3Q5A9w4LQzXNTXn9ahEoDhTQW4K` |
-| Production alias | `https://www.cr8w.com` |
-| Registry included | Yes |
-| Parallel source reads included | Yes |
+The production homepage returned HTTP 200. The production dashboard sync endpoint returned the current Notion freshness metadata and Money count 2.
 
-## Protected Notion Sync
+| Money record | Amount |
+| --- | ---: |
+| `[DEV SAMPLE] Money expense test` | -67.89 |
+| `[DEV SAMPLE] Money income test` | 123.45 |
 
-The production operator initially failed because the registry import needed an explicit `.js` extension for Vercel ESM resolution. After that fix, the function exceeded the execution window because five sources were queried sequentially. Source reads were changed to `Promise.all`, then the function passed.
+The source code confirms the Money filter is wired in `NotionMirrorSummary.tsx`: the filter key is `money`, the button and select option use the label `Money`, and matching records render as linked cards with the record label.
 
-The dry-run returned 24 records with Money count 2. The approved real write returned HTTP 200, run ID `notion-1789046614763-04fbf8ed`, and 6 writes.
+The connected browser navigated to `https://www.cr8w.com`, but the browser view artifact failed with a Chrome extension access error before a visual screenshot or click result could be captured. API and code-path checks passed. A visual click test remains pending when browser viewing is available.
 
-## Supabase Read Verification
+## Handoff Prompt Review
 
-`GET /api/dashboard-sync` returned HTTP 200. Mirror counts were People 13, Flows 3, Moves 4, Content 2, and Money 2. Freshness source was Notion, and `mirrorUpdatedAt` was `2026-09-10T13:23:36.781Z`.
+Reviewed and corrected `AI_HANDOFF_PROMPT.md`:
 
-Money Amount values were verified as numbers: `123.45` and `-67.89`.
+- Updated the latest implementation and production deployment identifiers.
+- Changed the pending-sync language to completed-sync language.
+- Recorded the verified Money count of 2 and sync run ID.
+- Replaced the old release sequence with the next typed-property and source-discovery sequence.
 
-## Security
+## Next Iteration Plan
 
-A new random operator token was stored as a Vercel Production Secret. The local temporary token file was removed after use. No token value was printed, committed, or placed in the handoff prompt.
-
-## Handoff
-
-`AI_HANDOFF_PROMPT.md` is complete and updated with the successful sync state.
+`NOTION_SOURCES_NEXT.md` now prioritizes a typed property envelope, a protected source discovery manifest, one approved new database at a time, registry-driven UI metadata, visible Money amounts, and payload thresholds for moving search server-side.

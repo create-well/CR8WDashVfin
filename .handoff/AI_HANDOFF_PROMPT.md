@@ -15,8 +15,8 @@ The dashboard should make the current state easy to see without asking the team 
 - Production domain: `https://www.cr8w.com`
 - Vercel project: `cr8w-dash-vfin`
 - Active branch: `feat/notion-freshness-contract`
-- Last registry commit: `a04530d8`
-- Production deployment before the registry change: `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r`
+- Last implementation commit: `ca76e7f2`
+- Latest production deployment: `dpl_G3Q5A9w4LQzXNTXn9ahEoDhTQW4K`
 - Do not stage or overwrite unrelated existing working-tree changes.
 
 ## Source-of-truth boundary
@@ -64,7 +64,7 @@ The Money data source was initially empty. Two clearly labeled development recor
 
 They were verified through a follow-up Notion API query and are now copied into Supabase through the protected operator sync.
 
-## Current mirror state before the pending sync
+## Current mirror state after the verified sync
 
 - People: 13
 - Flows: 3
@@ -78,16 +78,14 @@ The verified sync run was `notion-1789046614763-04fbf8ed`. Its `mirrorUpdatedAt`
 
 The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visible. It slows while hidden, backs off after errors, and refreshes immediately when visible again. The Notion mirror panel supports source filters and case-insensitive search. Keep the current client-side search model while the payload remains small.
 
-## Safe next sequence
+## Completed release sequence
 
-1. Confirm production deployment for the registry is Ready.
-2. Use the protected operator token to call `POST https://www.cr8w.com/api/notion-sync` with `{ "dryRun": true }`.
-3. Verify the dry-run response reports Money count 2 and Amount values are preserved as numbers in the normalized snapshot if the response includes records.
-4. If correct, call the same endpoint with `{ "dryRun": false }`.
-5. Call `GET https://www.cr8w.com/api/dashboard-sync` and verify Money count 2, freshness source `notion`, and a new `mirrorUpdatedAt`.
-6. Keep the two sample records until UI testing is complete. Delete only those two pages afterward if requested.
-7. Validate Checkbox fields using Flows `Public?` or Content `Final?`, and validate Money `Amount` as a number.
-8. Record the deployment ID, sync run ID, counts, freshness, and test result in `.handoff/STATE.md` and `.handoff/VALIDATION.md`.
+1. Production deployment reached Ready.
+2. The protected dry-run returned 24 records with Money count 2.
+3. The protected real write returned HTTP 200 with 6 writes.
+4. `GET https://www.cr8w.com/api/dashboard-sync` returned Money count 2, freshness source `notion`, and a new `mirrorUpdatedAt`.
+5. Keep the two sample records until UI testing is complete. Delete only those two pages afterward if requested.
+6. The next iteration should add the typed property envelope and discover the next approved Notion data sources before enabling more registry entries.
 
 ## Efficiency thresholds
 
