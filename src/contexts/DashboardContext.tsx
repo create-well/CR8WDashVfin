@@ -11,6 +11,7 @@ import {
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
+import type { SyncFreshness } from '../app/components/api';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -50,6 +51,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [freshness, setFreshness] = useState<SyncFreshness>({
+    source: 'unknown',
+    mirrorUpdatedAt: null,
+    sourceLastEditedAt: null,
+    syncRunId: null,
+  });
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
@@ -129,6 +136,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
+        if (data.freshness) setFreshness(data.freshness);
         setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
@@ -537,6 +545,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     syncStatus: computedSyncStatus,
     lastSynced,
+    freshness,
     permissions: {
       careConsent: true,
     },

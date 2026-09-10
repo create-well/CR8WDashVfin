@@ -1,0 +1,8 @@
+{
+  "actor": "Manus",
+  "provider": "Manus",
+  "branch": "feat/notion-freshness-contract",
+  "scope": "Add a backward-compatible Notion mirror freshness contract and status UI",
+  "started_at": "2026-09-10T04:59:30-07:00",
+  "expires_at": "2026-09-10T06:59:30-07:00"
+}

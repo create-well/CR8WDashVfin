@@ -304,6 +304,14 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  freshness?: SyncFreshness;
+}
+
+export interface SyncFreshness {
+  source: 'notion' | 'unknown';
+  mirrorUpdatedAt: string | null;
+  sourceLastEditedAt: string | null;
+  syncRunId: string | null;
 }
 
 export interface CalendarEventKV {

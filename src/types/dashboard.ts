@@ -3,6 +3,7 @@ import type {
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
   CoFlowDate, CoFlowCheckin, WellNote,
 } from '../app/components/api';
+import type { SyncFreshness } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
@@ -32,6 +33,7 @@ export interface DashboardPayload {
   wellNotes: WellNote[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
+  freshness: SyncFreshness;
   permissions: DashboardPermissions;
 }
 
