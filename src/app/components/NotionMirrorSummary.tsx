@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import type { NotionMirrorRecord, NotionMirrors } from './api';
+import type { NotionMirrorRecord, NotionMirrors, NotionSourceMetadata } from './api';
 import type { SyncFreshness } from '../../types/dashboard';
 
 type MirrorKey = keyof NotionMirrors;
 type FilterKey = 'all' | MirrorKey;
 
+// Client-side fallback only. When the server sends registry metadata
+// (notionSources), labels and visibility come from there instead.
 const LABELS: Record<MirrorKey, string> = {
   people: 'People',
   flows: 'Flows',
@@ -13,6 +15,42 @@ const LABELS: Record<MirrorKey, string> = {
   money: 'Money',
   engineeringDelivery: 'Engineering Delivery',
 };
+
+export interface SourceCollection {
+  key: MirrorKey;
+  label: string;
+  records: NotionMirrorRecord[];
+}
+
+// Registry-driven collections: the server decides which sources are visible
+// and what they are called, so a newly approved source needs no frontend edit.
+// Falls back to the static label table only when no metadata has arrived yet
+// (initial load or an older payload).
+export function sourceCollections(mirrors: NotionMirrors, sources?: NotionSourceMetadata[]): SourceCollection[] {
+  if (sources && sources.length > 0) {
+    return sources
+      .filter(source => source.visible !== false && (Object.keys(mirrors) as string[]).includes(source.key))
+      .map(source => ({ key: source.key as MirrorKey, label: source.label, records: mirrors[source.key as MirrorKey] ?? [] }));
+  }
+  return (Object.keys(LABELS) as MirrorKey[]).map(key => ({ key, label: LABELS[key], records: mirrors[key] ?? [] }));
+}
+
+function numericPropertyValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'value' in (value as Record<string, unknown>)) {
+    const inner = (value as Record<string, unknown>).value;
+    return typeof inner === 'number' && Number.isFinite(inner) ? inner : null;
+  }
+  return null;
+}
+
+// Money cards show the record name and its numeric Amount together. Currency
+// is intentionally omitted until the source schema provides it.
+export function moneyAmountDisplay(record: NotionMirrorRecord): string | null {
+  const amount = numericPropertyValue(record.properties?.Amount);
+  if (amount === null) return null;
+  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
 
 export interface TypedPropertyFilterOption {
   key: string;
@@ -109,18 +147,15 @@ function sourceFreshnessTone(freshness: SyncFreshness, key: MirrorKey): { color:
 interface NotionMirrorSummaryProps {
   mirrors: NotionMirrors;
   freshness: SyncFreshness;
+  sources?: NotionSourceMetadata[];
 }
 
-export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryProps) {
+export function NotionMirrorSummary({ mirrors, freshness, sources }: NotionMirrorSummaryProps) {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
   const [property, setProperty] = useState('all');
   const [propertyValue, setPropertyValue] = useState('all');
-  const collections = useMemo(() => (Object.keys(LABELS) as MirrorKey[]).map((key) => ({
-    key,
-    label: LABELS[key],
-    records: mirrors[key] ?? [],
-  })), [mirrors.people, mirrors.flows, mirrors.moves, mirrors.content, mirrors.money, mirrors.engineeringDelivery]);
+  const collections = useMemo(() => sourceCollections(mirrors, sources), [mirrors, sources]);
   const indexedRecords = useMemo(() => collections.flatMap(({ key, label, records }) => records.map(record => ({
     key,
     label,
@@ -202,7 +237,7 @@ export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryP
         </label>
         <select value={filter} onChange={event => setFilter(event.target.value as FilterKey)} aria-label="Filter synchronized records by source" style={{ minWidth: 130, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}>
           <option value="all">All sources</option>
-          {(Object.keys(LABELS) as MirrorKey[]).map(key => <option key={key} value={key}>{LABELS[key]}</option>)}
+          {collections.map(({ key, label }) => <option key={key} value={key}>{label}</option>)}
         </select>
         <select value={property} onChange={event => { setProperty(event.target.value); setPropertyValue('all'); }} aria-label="Filter synchronized records by property" style={{ minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}>
           <option value="all">All properties</option>
@@ -222,18 +257,24 @@ export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryP
             Showing {Math.min(filteredRecords.length, 12)} of {filteredRecords.length} matching records
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, marginTop: 8 }}>
-            {filteredRecords.slice(0, 12).map(({ key, label, record }) => (
-              <a
-                key={`${key}-${record.sourcePageId}`}
-                href={record.sourceUrl ?? undefined}
-                target={record.sourceUrl ? '_blank' : undefined}
-                rel={record.sourceUrl ? 'noreferrer' : undefined}
-                style={{ minWidth: 0, padding: '9px 10px', borderRadius: 9, border: '1px solid var(--border-soft, rgba(196,164,132,0.14))', color: 'inherit', textDecoration: 'none' }}
-              >
-                <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted, #6B5F7A)' }}>{label}</div>
-                <div style={{ marginTop: 4, fontSize: '0.78rem', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recordLabel(record)}</div>
-              </a>
-            ))}
+            {filteredRecords.slice(0, 12).map(({ key, label, record }) => {
+              const amount = key === 'money' ? moneyAmountDisplay(record) : null;
+              return (
+                <a
+                  key={`${key}-${record.sourcePageId}`}
+                  href={record.sourceUrl ?? undefined}
+                  target={record.sourceUrl ? '_blank' : undefined}
+                  rel={record.sourceUrl ? 'noreferrer' : undefined}
+                  style={{ minWidth: 0, padding: '9px 10px', borderRadius: 9, border: '1px solid var(--border-soft, rgba(196,164,132,0.14))', color: 'inherit', textDecoration: 'none' }}
+                >
+                  <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted, #6B5F7A)' }}>{label}</div>
+                  <div style={{ marginTop: 4, fontSize: '0.78rem', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recordLabel(record)}</div>
+                  {amount !== null && (
+                    <div style={{ marginTop: 3, fontSize: '0.78rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text, #2D2438)' }}>{amount}</div>
+                  )}
+                </a>
+              );
+            })}
           </div>
         </>
       ) : (

@@ -1,5 +1,13 @@
 # Validation
 
+## Registry-Driven Mirror UI Validation — 2026-09-10
+
+- Scope: `NotionMirrorSummary.tsx` (registry-driven collections + Money amount display), `ThisWeekPage.tsx` (passes `data.notionSources`), `NotionMirrorSummary.test.ts` (five new cases).
+- Vitest could not start workers within 60 s across forks, threads, single-fork, and vmThreads pools; root cause is machine load (Spotlight indexing and Docker pinning cores, load avg 4.8–6.8), not the code. This is an environment limitation, not a pass.
+- Fallback: the full test file was bundled with esbuild and executed in plain Node with a minimal vitest shim (`scripts/validate-mirror-summary.mjs`). All 15 assertions passed, including: registry-order collections, invisible-source hiding, unknown-key skipping, static-label fallback, Money amount formatting from typed envelopes and plain numbers, and null handling for missing or non-finite amounts.
+- `pnpm build` passed (built in 7m 36s under the same load; `ThisWeekPage` chunk hash changed, confirming the new code is in the bundle).
+- Outstanding: re-run the real Vitest suite (focused file, then full serial) when machine load settles, before deployment.
+
 ## Production Money Filter Test
 
 The production homepage returned HTTP 200. The production dashboard sync endpoint returned the current Notion freshness metadata and Money count 2.

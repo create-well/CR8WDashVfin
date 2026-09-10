@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildPropertyOptions, matchesTypedFilters, propertyDisplayValue, recordLabel, sourceFreshnessLabel } from '../NotionMirrorSummary';
+import { buildPropertyOptions, matchesTypedFilters, moneyAmountDisplay, propertyDisplayValue, recordLabel, sourceCollections, sourceFreshnessLabel } from '../NotionMirrorSummary';
+import type { NotionMirrors } from '../../api';
+
+const emptyMirrors: NotionMirrors = { people: [], flows: [], moves: [], content: [], money: [], engineeringDelivery: [] };
+
+const registrySources = [
+  { key: 'people', label: 'People', visible: true, searchable: true, sensitivity: 'team' as const, displayFields: ['Name'], recordCount: 13 },
+  { key: 'money', label: 'Money', visible: true, searchable: true, sensitivity: 'restricted' as const, displayFields: ['Name', 'Amount'], recordCount: 2 },
+];
 
 const typedRecord = {
   source: 'engineeringDelivery' as const,
@@ -64,5 +72,45 @@ describe('NotionMirrorSummary typed properties', () => {
       source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null,
       sourceFreshness: { money: { status: 'error', recordCount: 2, sourceLastEditedAt: null, lastSuccessfulSyncAt: null, error: 'timeout' } },
     }, 'money')).toBe('Sync error · no successful sync');
+  });
+
+  it('builds collections from server registry metadata in registry order', () => {
+    const collections = sourceCollections(emptyMirrors, registrySources);
+    expect(collections.map(collection => collection.key)).toEqual(['people', 'money']);
+    expect(collections.map(collection => collection.label)).toEqual(['People', 'Money']);
+  });
+
+  it('hides sources the server marks invisible and skips unknown keys', () => {
+    const collections = sourceCollections(emptyMirrors, [
+      ...registrySources,
+      { key: 'money', label: 'Duplicate hidden', visible: false, searchable: true, sensitivity: 'restricted' as const, displayFields: [], recordCount: 0 },
+      { key: 'futureSource', label: 'Future', visible: true, searchable: true, sensitivity: 'team' as const, displayFields: [], recordCount: 0 },
+    ]);
+    expect(collections.map(collection => collection.key)).toEqual(['people', 'money']);
+    expect(collections.filter(collection => collection.label === 'Duplicate hidden')).toHaveLength(0);
+  });
+
+  it('falls back to the static label table when no metadata has arrived', () => {
+    expect(sourceCollections(emptyMirrors).map(collection => collection.key))
+      .toEqual(['people', 'flows', 'moves', 'content', 'money', 'engineeringDelivery']);
+    expect(sourceCollections(emptyMirrors, []).map(collection => collection.key))
+      .toEqual(['people', 'flows', 'moves', 'content', 'money', 'engineeringDelivery']);
+  });
+
+  it('formats Money amounts from typed envelopes and plain numbers', () => {
+    const typed = {
+      source: 'money' as const, sourcePageId: 'm1', sourceUrl: null, sourceLastEditedAt: null, archived: false,
+      properties: { Amount: { type: 'number', value: 123.45, displayValue: '123.45', sensitivity: 'restricted' as const } },
+    };
+    expect(moneyAmountDisplay(typed)).toBe('123.45');
+    expect(moneyAmountDisplay({ ...typed, sourcePageId: 'm2', properties: { Amount: { type: 'number', value: -67.89 } } })).toBe('-67.89');
+    expect(moneyAmountDisplay({ ...typed, sourcePageId: 'm3', properties: { Amount: 1000 } })).toBe('1,000');
+  });
+
+  it('returns no amount display for missing or non-finite Money values', () => {
+    const base = { source: 'money' as const, sourcePageId: 'm1', sourceUrl: null, sourceLastEditedAt: null, archived: false, properties: {} };
+    expect(moneyAmountDisplay(base)).toBeNull();
+    expect(moneyAmountDisplay({ ...base, properties: { Amount: { type: 'number', value: null } } })).toBeNull();
+    expect(moneyAmountDisplay({ ...base, properties: { Amount: { type: 'number', value: 'oops' } } })).toBeNull();
   });
 });
