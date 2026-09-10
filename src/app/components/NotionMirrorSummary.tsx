@@ -82,9 +82,9 @@ export function NotionMirrorSummary({ mirrors, freshness, sources }: NotionMirro
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
     return collections
-      .filter(({ key, searchable }) => filter === 'all' || filter === key)
-      .flatMap(({ key, label, displayFields, records }) => records.map((record) => ({ key, label, displayFields, record })))
-      .filter(({ displayFields, record }) => !query || recordSearchText(record, displayFields).includes(query));
+      .filter(({ key }) => filter === 'all' || filter === key)
+      .flatMap(({ key, label, searchable, displayFields, records }) => records.map((record) => ({ key, label, searchable, displayFields, record })))
+      .filter(({ searchable, displayFields, record }) => !query || (searchable && recordSearchText(record, displayFields).includes(query)));
   }, [collections, filter, search]);
 
   return (
