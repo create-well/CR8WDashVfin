@@ -11,6 +11,8 @@ function resolveApiBase(): string {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
   const onVercelOrDomain =
     host.endsWith('.vercel.app') ||
+    host === 'www.cr8w.com' ||
+    host === 'cr8w.com' ||
     host === 'createwell.monnyfest.co' ||
     host === 'localhost' ||
     host === '127.0.0.1';
