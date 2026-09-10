@@ -1,15 +1,7 @@
 # Next Action
 
-The Notion mirror data is connected to the dashboard frontend and verified through the deployed read endpoint.
+Production release is complete. Open `https://www.cr8w.com`, visit the team home, and test one source filter plus one search query against the Notion mirror panel.
 
-Next bounded slice: refine the visual treatment or add source-specific views for People, Flows, Moves, Content, or Money. Do not run another real Notion write for this task.
+The dashboard will refresh the Supabase mirror read every 30 seconds while visible, slow down while hidden, and refresh when the tab becomes visible again.
 
-Verified counts:
-
-| Source | Records |
-| --- | ---: |
-| PEOPLE | 13 |
-| FLOWS | 3 |
-| MOVES | 4 |
-| CONTENT | 2 |
-| MONEY | 0 |
+Do not run another real Notion write unless source data changes or an explicit reconciliation is needed.

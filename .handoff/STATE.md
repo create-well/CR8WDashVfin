@@ -9,36 +9,51 @@
 - Notion owns operational truth. Supabase is the read-only mirror plus auth, calendar tokens, and intake staging.
 - Existing unrelated user changes remain uncommitted and untouched.
 
-## Completed Backend Slice
+## Completed Integration
 
-The explicit Vercel function `api/notion-sync.ts` owns the protected operator action. It reads the five confirmed Notion data sources, paginates to completion, normalizes properties while preserving stable page IDs, defaults to dry-run, and writes isolated mirror keys only when `dryRun: false`.
+The protected `api/notion-sync.ts` operator action writes the isolated Notion mirror keys. The read-only `api/dashboard-sync.ts` function returns operational dashboard data, all five Notion mirror collections, and freshness metadata from Supabase.
 
-The approved `NOTION_SYNC_OPERATOR_TOKEN` is stored as a hidden Vercel Preview Secret. The verified real write created the five mirror keys and `cr8w_notion_sync_meta` with PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, and MONEY 0.
+The dashboard frontend now reads `/api/dashboard-sync`, propagates `notionMirrors` through `DashboardContext`, and renders `NotionMirrorSummary` on the team home page.
 
-## Completed UI Slice
+## Automatic Refresh
 
-Added `api/dashboard-sync.ts`, a read-only Supabase-backed function that returns the existing operational dashboard collections, `notionMirrors`, and sanitized freshness metadata in one payload. It reads `cr8w_notion_sync_meta` and all five `cr8w_notion_mirror_*` keys.
+The frontend polls the dashboard sync endpoint every 30 seconds while the tab is visible. It uses a small random jitter to avoid synchronized request bursts, backs off after failures up to five minutes, slows to two minutes while the tab is hidden, and triggers an immediate refresh when the tab becomes visible again.
 
-Updated `src/app/components/api.ts` so `sync()` calls `/api/dashboard-sync` instead of the unreliable nested `/api/server/sync` route. Added typed `NotionMirrorRecord` and `NotionMirrors` contracts.
+This is bounded polling, not a webhook. The current source-of-truth workflow remains safe because the dashboard reads the existing Supabase mirror and never writes to Notion from the browser.
 
-Updated `DashboardContext` and `DashboardPayload` to retain mirror collections. Added `NotionMirrorSummary` to the team home page. It displays counts for People, Flows, Moves, Content, and Money, plus representative source-linked records and mirror freshness.
+## Filtering and Search
 
-## Preview Verification
+The Notion mirror panel supports source filters for People, Flows, Moves, Content, Money, and All sources. It also supports case-insensitive full-text search across source, stable page ID, extracted record label, and serialized property values. Results are capped at 12 rendered cards to keep the panel responsive while showing the total match count.
 
-Preview deployment: `cr8w-dash-vfin-q7ppmmk7z-monnylog.vercel.app`
+## Production Deployment
 
-`GET /api/dashboard-sync` returned `freshness.source: notion`, the verified run ID, and counts of PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, and MONEY 0. The response also returned the existing operational collections.
+Production deployment succeeded after adding a pnpm 10-compatible `pnpm-lock.yaml`. The first production attempt failed because Vercel’s frozen pnpm install detected a lockfile override mismatch. The lockfile was regenerated with pnpm 10, passed a local frozen install, committed, and redeployed.
 
-The preview loaded in My Browser. A follow-up DOM extraction failed because the browser session could not access a chrome-extension URL. Build and API-level verification passed; no browser mutation was performed.
+Production deployment: `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r`
+
+Production aliases:
+
+- `https://www.cr8w.com`
+- `https://cr8w-dash-vfin.vercel.app`
+- `https://cr8w-dash-vfin-monnylog.vercel.app`
+
+## Live Verification
+
+- Vercel status: Ready.
+- `https://www.cr8w.com/`: HTTP 200.
+- `GET https://www.cr8w.com/api/dashboard-sync`: passed.
+- Freshness source: `notion`.
+- Mirror counts: PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, MONEY 0.
+- Production functions deployed: `api/dashboard-sync`, `api/notion-sync`, `api/server`, and `api/server/[[...path]]`.
 
 ## Validation
 
 - Vite production build passed.
-- Esbuild parse for `api/dashboard-sync.ts` passed.
-- `git diff --check` passed.
-- Preview read endpoint returned all expected mirror counts and freshness metadata.
-- Existing Vite warnings remain: AuthGate dynamic/static import and a large application chunk.
+- Esbuild parsing passed for dashboard-sync and notion-sync.
+- pnpm 10 frozen install passed.
+- Production deployment reached Ready.
+- Production homepage and read endpoint passed.
 
-## Next Action
+## Existing Unrelated Working-Tree Changes
 
-The Notion mirror data is now connected to the dashboard frontend. The next bounded slice is visual refinement or deeper source-specific views. Do not run another real Notion write for this task.
+The following remain unstaged and untouched: `pnpm-workspace.yaml`, legacy import deletions, `.env.production`, and unrelated untracked source/test files.

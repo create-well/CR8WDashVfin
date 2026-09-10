@@ -1,26 +1,34 @@
 # Validation
 
-## UI Slice
+## Final Production Result
 
-Added `api/dashboard-sync.ts` as a read-only dashboard data boundary. It returns operational data, all five Notion mirror collections, and freshness metadata from Supabase.
+Production deployment `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r` reached Ready and was aliased to `https://www.cr8w.com`.
 
-Updated the client sync method to call `/api/dashboard-sync`, typed the mirror record contract, propagated mirrors through `DashboardContext`, and mounted `NotionMirrorSummary` on the team home page.
+The first production attempt failed during Vercel’s frozen pnpm install because the available lockfile did not match the package override configuration. The lockfile was regenerated with pnpm 10, validated with `pnpm@10 install --frozen-lockfile`, committed as `d87f3066`, and the production deployment succeeded on retry.
+
+## Feature Validation
+
+The frontend polls `/api/dashboard-sync` every 30 seconds while visible, applies jitter, backs off after failures, slows polling while hidden, and refreshes on visibility return.
+
+The Notion panel supports source filtering across All, People, Flows, Moves, Content, and Money. Search is case-insensitive and covers source name, page ID, extracted record label, and property values. Rendering is capped at 12 cards with the total match count shown.
 
 ## Passed
 
-- `git diff --check`
-- `./node_modules/.bin/vite build`
-- `./node_modules/.bin/esbuild api/dashboard-sync.ts --platform=node --format=esm`
-- Deployed `GET /api/dashboard-sync` returned `source: notion`.
-- Deployed mirror counts matched Supabase: 13 people, 3 flows, 4 moves, 2 content, 0 money.
-- Deployed response included the existing operational dashboard collections.
-
-The preview loaded in My Browser. DOM extraction was unavailable because the browser session could not access a chrome-extension URL. No browser mutation occurred.
-
-## Existing Gaps
-
-The repository has no project `tsconfig*.json`; the installed TypeScript 4.9 compiler cannot parse newer Node declaration syntax. Vitest is not installed. Existing Vite warnings remain for the AuthGate import pattern and the large application chunk. The old `/api/server/*` nested route remains legacy; `/api/dashboard-sync` is the canonical dashboard read endpoint and `/api/notion-sync` is the canonical operator write endpoint.
+| Check | Result |
+| --- | --- |
+| Vite production build | Pass |
+| Esbuild server parsing | Pass |
+| pnpm 10 frozen install | Pass |
+| Vercel production deployment | Pass |
+| `https://www.cr8w.com/` | HTTP 200 |
+| `GET /api/dashboard-sync` | Pass |
+| Freshness source | `notion` |
+| People mirror count | 13 |
+| Flows mirror count | 3 |
+| Moves mirror count | 4 |
+| Content mirror count | 2 |
+| Money mirror count | 0 |
 
 ## Scope Protection
 
-The UI commit staged only the explicit dashboard sync function, API contract, dashboard context, home page, mirror summary component, and handoff records. Existing deletions, environment files, lockfile changes, and unrelated untracked feature/test files remain unstaged.
+Unrelated existing working-tree changes remain unstaged and untouched.
