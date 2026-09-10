@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { DashboardProvider } from '../contexts/DashboardContext';
+import { SyncProvider } from '../contexts/SyncProvider';
 import { AuthGate, isAuthenticated, getStoredProfile, signOut } from './components/AuthGate';
 import { useThemeInit } from './components/ThemeProvider';
 import { GCAL_CLIENT_ID } from './components/data';
@@ -133,8 +134,10 @@ export default function App() {
   }
 
   return (
-    <DashboardProvider onSignOut={handleSignOut}>
-      <RouterProvider router={router} />
-    </DashboardProvider>
+    <SyncProvider>
+      <DashboardProvider onSignOut={handleSignOut}>
+        <RouterProvider router={router} />
+      </DashboardProvider>
+    </SyncProvider>
   );
 }

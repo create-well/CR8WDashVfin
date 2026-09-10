@@ -11,8 +11,9 @@ import {
 } from '../app/components/data';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
-import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
+import type { DashboardContextValue, DashboardPayload } from '../types/dashboard';
 import type { SyncFreshness } from '../app/components/api';
+import { useSync } from './SyncProvider';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -34,6 +35,7 @@ interface DashboardProviderProps {
 }
 
 export function DashboardProvider({ children, onSignOut }: DashboardProviderProps) {
+  const { data: syncedData, syncStatus, lastSynced, retrySync } = useSync();
   // ── Data state ───────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS_MAPPED);
@@ -52,18 +54,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [notionSources, setNotionSources] = useState<NotionSourceMetadata[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
-  const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [freshness, setFreshness] = useState<SyncFreshness>({
     source: 'unknown',
     mirrorUpdatedAt: null,
     sourceLastEditedAt: null,
     syncRunId: null,
   });
-  const dataLoadedRef = useRef(false);
-  const silentFailCount = useRef(0);
-  const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const initialProfile = getStoredProfile() ?? 'monny';
@@ -94,114 +90,26 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     });
   }, []);
 
-  // ── Dedup system messages ────────────────────────────────────────────────────
-  function deduplicateSystemMessages(msgs: Message[]): Message[] {
-    const seen = new Map<string, Message>();
-    const result: Message[] = [];
-    for (const m of msgs) {
-      if (m.author === 'system') {
-        const key = m.content?.trim() || '';
-        const existing = seen.get(key);
-        if (existing) {
-          const existingTime = existing.created_at ? new Date(existing.created_at).getTime() : 0;
-          const currentTime = m.created_at ? new Date(m.created_at).getTime() : 0;
-          if (currentTime > existingTime) {
-            const idx = result.indexOf(existing);
-            if (idx >= 0) result[idx] = m;
-            seen.set(key, m);
-          }
-        } else {
-          seen.set(key, m);
-          result.push(m);
-        }
-      } else {
-        result.push(m);
-      }
-    }
-    return result;
-  }
-
-  // ── Sync polling ─────────────────────────────────────────────────────────────
+  // SyncProvider owns polling; mirror data is projected into dashboard state here.
   useEffect(() => {
-    async function fetchSync(silent = false) {
-      try {
-        const data = await api.sync();
-        setTasks(data.tasks || []);
-        setStations(data.stations?.length ? data.stations : DEFAULT_STATIONS_MAPPED);
-        setForum(data.forum || []);
-        setMessages(deduplicateSystemMessages(data.messages || []));
-        setBrainDumps(data.braindumps || []);
-        if (data.announcements?.length) setAnnouncements(data.announcements);
-        setForumReplies(data.forumReplies || []);
-        setWorkshops(data.workshops || []);
-        setWorkshopPrograms(data.workshopPrograms || []);
-        setWorkshopResources(data.workshopResources || []);
-        setCoFlowDates(data.coflowDates || []);
-        setCoFlowCheckins(data.coflowCheckins || []);
-        setWellNotes(data.wellNotes || []);
-        if (data.notionMirrors) setNotionMirrors(data.notionMirrors);
-        if (data.notionSources) setNotionSources(data.notionSources);
-        if (data.freshness) setFreshness(data.freshness);
-        setSyncStatus('fresh');
-        setLastSynced(new Date());
-        silentFailCount.current = 0;
-        if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
-      } catch (e) {
-        const isNetworkError = e instanceof TypeError &&
-          (String((e as Error).message).includes('fetch') || String((e as Error).message).includes('network'));
-        silentFailCount.current += 1;
-        if (!isNetworkError) {
-          console.error('Sync error:', e);
-          if (silentFailCount.current >= 2) setSyncStatus('failed');
-        }
-        if (!dataLoadedRef.current) {
-          dataLoadedRef.current = true;
-          setSyncStatus('failed');
-        }
-      }
-    }
-
-    fetchSyncRef.current = fetchSync;
-    fetchSync(false);
-
-    const MIRROR_REFRESH_INTERVAL = 30_000;
-    const HIDDEN_REFRESH_INTERVAL = 120_000;
-    const MAX_INTERVAL = 300_000;
-
-    function schedulePoll() {
-      const baseInterval = typeof document !== 'undefined' && document.visibilityState === 'hidden'
-        ? HIDDEN_REFRESH_INTERVAL
-        : MIRROR_REFRESH_INTERVAL;
-      const jitter = Math.floor(baseInterval * (Math.random() * 0.2 - 0.1));
-      pollRef.current = setTimeout(async () => {
-        await fetchSyncRef.current?.(true);
-        const retryInterval = silentFailCount.current > 0
-          ? Math.min(baseInterval * 2 ** Math.min(silentFailCount.current, 3), MAX_INTERVAL)
-          : baseInterval;
-        schedulePollWithDelay(retryInterval + jitter);
-      }, baseInterval + jitter);
-    }
-
-    function schedulePollWithDelay(delay: number) {
-      if (pollRef.current) clearTimeout(pollRef.current);
-      pollRef.current = setTimeout(() => schedulePoll(), Math.max(1_000, delay));
-    }
-
-    function refreshOnVisible() {
-      if (document.visibilityState !== 'visible') return;
-      if (pollRef.current) clearTimeout(pollRef.current);
-      fetchSyncRef.current?.(true);
-      schedulePoll();
-    }
-
-    schedulePoll();
-    document.addEventListener('visibilitychange', refreshOnVisible);
-
-    return () => {
-      if (pollRef.current) clearTimeout(pollRef.current as any);
-      document.removeEventListener('visibilitychange', refreshOnVisible);
-    };
-  }, []);
+    if (!syncedData) return;
+    setTasks(syncedData.tasks || []);
+    setStations(syncedData.stations?.length ? syncedData.stations : DEFAULT_STATIONS_MAPPED);
+    setForum(syncedData.forum || []);
+    setMessages(syncedData.messages || []);
+    setBrainDumps(syncedData.braindumps || []);
+    if (syncedData.announcements?.length) setAnnouncements(syncedData.announcements);
+    setForumReplies(syncedData.forumReplies || []);
+    setWorkshops(syncedData.workshops || []);
+    setWorkshopPrograms(syncedData.workshopPrograms || []);
+    setWorkshopResources(syncedData.workshopResources || []);
+    setCoFlowDates(syncedData.coflowDates || []);
+    setCoFlowCheckins(syncedData.coflowCheckins || []);
+    setWellNotes(syncedData.wellNotes || []);
+    if (syncedData.notionMirrors) setNotionMirrors(syncedData.notionMirrors);
+    if (syncedData.notionSources) setNotionSources(syncedData.notionSources);
+    if (syncedData.freshness) setFreshness(syncedData.freshness);
+  }, [syncedData]);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
   const wednesdayReminderSent = useRef(false);
@@ -539,22 +447,12 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
     // Sync + auth
     retrySync() {
-      fetchSyncRef.current?.(false);
+      retrySync();
     },
     async signOut() {
       await onSignOut();
     },
   };
-
-  // ── Compute stale status ─────────────────────────────────────────────────────
-  const STALE_THRESHOLD = 5 * 60 * 1000;
-  const computedSyncStatus: SyncStatus = syncStatus === 'failed'
-    ? 'failed'
-    : syncStatus === 'loading'
-    ? 'loading'
-    : lastSynced && (Date.now() - lastSynced.getTime() > STALE_THRESHOLD)
-    ? 'stale'
-    : 'fresh';
 
   const data: DashboardPayload = {
     tasks,
@@ -572,7 +470,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     wellNotes,
     notionMirrors,
     notionSources,
-    syncStatus: computedSyncStatus,
+    syncStatus,
     lastSynced,
     freshness,
     permissions: {
