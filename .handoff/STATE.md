@@ -5,6 +5,7 @@
 - Repository: `create-well/CR8WDashVfin`
 - Production role: deployed source for `cr8w.com`.
 - Current branch: `feat/notion-freshness-contract`, pushed to GitHub.
+- Latest implementation commits: `96a1776` (Geyser task/station slices) and `eff7e9d` (dashboard E2E navigation stabilization).
 - Vercel project: `cr8w-dash-vfin`.
 - Notion owns operational truth. Supabase is the read mirror plus auth, calendar tokens, intake staging, and existing dashboard records.
 - Existing unrelated user changes remain uncommitted and untouched.
@@ -16,6 +17,12 @@ The metadata-driven source registry, explicit Checkbox and Number normalization,
 - Deployment: `dpl_G3Q5A9w4LQzXNTXn9ahEoDhTQW4K`
 - Production alias: `https://www.cr8w.com`
 - Status: Ready
+
+## Geyser Slice Deployment
+
+The Geyser Moves route now mounts the extracted task and station components while retaining the existing DashboardContext mutation boundary. Production deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` is Ready and aliased to `https://www.cr8w.com`.
+
+Validation completed locally: `pnpm build` passed; serial Vitest passed with 7 files and 34 tests; focused Playwright mutation coverage passed for task inline edit, station status update, and station creation; the full Playwright suite passed after stabilizing dashboard navigation on `domcontentloaded`.
 
 ## Protected Sync
 
