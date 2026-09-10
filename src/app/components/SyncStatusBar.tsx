@@ -20,7 +20,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced } = data;
+  const { syncStatus, lastSynced, freshness } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -30,9 +30,16 @@ export function SyncStatusBar() {
   }, []);
 
   const cfg = STATUS_CONFIG[syncStatus];
-  const timeLabel = lastSynced ? `Last synced ${relativeTime(lastSynced)}` : 'Not yet synced';
+  const mirrorUpdatedAt = freshness.mirrorUpdatedAt ? new Date(freshness.mirrorUpdatedAt) : null;
+  const mirrorIsStale = mirrorUpdatedAt !== null &&
+    Date.now() - mirrorUpdatedAt.getTime() > 10 * 60 * 1000;
+  const fetchLabel = lastSynced ? `Dashboard fetched ${relativeTime(lastSynced)}` : 'Dashboard not yet fetched';
+  const mirrorLabel = mirrorUpdatedAt
+    ? `Notion mirror written ${relativeTime(mirrorUpdatedAt)}`
+    : 'Notion mirror freshness unavailable';
 
-  if (syncStatus === 'fresh' && lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
+  if (syncStatus === 'fresh' && !mirrorIsStale && freshness.source === 'notion' &&
+      lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
     return null;
   }
 
@@ -64,8 +71,10 @@ export function SyncStatusBar() {
           transition: 'background 0.3s',
         }}
       />
-      <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
-      {(syncStatus === 'failed' || syncStatus === 'stale') && (
+      <span>{fetchLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
+      <span aria-label="Notion mirror freshness"> · {mirrorLabel}</span>
+      {mirrorIsStale && <span> · Mirror stale</span>}
+      {(syncStatus === 'failed' || syncStatus === 'stale' || mirrorIsStale) && (
         <button
           onClick={() => actions.retrySync()}
           style={{

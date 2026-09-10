@@ -5,12 +5,14 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
+import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
 } from '../app/components/data';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
+import type { SyncFreshness } from '../app/components/api';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -46,10 +48,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
+  const [notionMirrors, setNotionMirrors] = useState<NotionMirrors>({ people: [], flows: [], moves: [], content: [], money: [] });
+  const [notionSources, setNotionSources] = useState<NotionSourceMetadata[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [freshness, setFreshness] = useState<SyncFreshness>({
+    source: 'unknown',
+    mirrorUpdatedAt: null,
+    sourceLastEditedAt: null,
+    syncRunId: null,
+  });
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
@@ -129,6 +139,9 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
+        if (data.notionMirrors) setNotionMirrors(data.notionMirrors);
+        if (data.notionSources) setNotionSources(data.notionSources);
+        if (data.freshness) setFreshness(data.freshness);
         setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
@@ -151,21 +164,43 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     fetchSyncRef.current = fetchSync;
     fetchSync(false);
 
-    let pollInterval = 15_000;
+    const MIRROR_REFRESH_INTERVAL = 30_000;
+    const HIDDEN_REFRESH_INTERVAL = 120_000;
     const MAX_INTERVAL = 300_000;
 
     function schedulePoll() {
+      const baseInterval = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+        ? HIDDEN_REFRESH_INTERVAL
+        : MIRROR_REFRESH_INTERVAL;
+      const jitter = Math.floor(baseInterval * (Math.random() * 0.2 - 0.1));
       pollRef.current = setTimeout(async () => {
         await fetchSyncRef.current?.(true);
-        pollInterval = silentFailCount.current > 0
-          ? Math.min(pollInterval * 2, MAX_INTERVAL)
-          : 15_000;
-        schedulePoll();
-      }, pollInterval);
+        const retryInterval = silentFailCount.current > 0
+          ? Math.min(baseInterval * 2 ** Math.min(silentFailCount.current, 3), MAX_INTERVAL)
+          : baseInterval;
+        schedulePollWithDelay(retryInterval + jitter);
+      }, baseInterval + jitter);
     }
-    schedulePoll();
 
-    return () => { if (pollRef.current) clearTimeout(pollRef.current as any); };
+    function schedulePollWithDelay(delay: number) {
+      if (pollRef.current) clearTimeout(pollRef.current);
+      pollRef.current = setTimeout(() => schedulePoll(), Math.max(1_000, delay));
+    }
+
+    function refreshOnVisible() {
+      if (document.visibilityState !== 'visible') return;
+      if (pollRef.current) clearTimeout(pollRef.current);
+      fetchSyncRef.current?.(true);
+      schedulePoll();
+    }
+
+    schedulePoll();
+    document.addEventListener('visibilitychange', refreshOnVisible);
+
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current as any);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
   }, []);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
@@ -535,8 +570,11 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
+    notionMirrors,
+    notionSources,
     syncStatus: computedSyncStatus,
     lastSynced,
+    freshness,
     permissions: {
       careConsent: true,
     },
