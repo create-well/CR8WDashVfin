@@ -1,9 +1,7 @@
 # Next Action
 
-Create the metadata-driven Notion source registry and run a dry-run schema check for the existing Money data source.
+Run the protected Notion operator in dry-run mode and verify that Money returns 2 records with Amount values 123.45 and -67.89. If the dry-run payload is correct, run the deliberate mirror refresh so the dashboard can display the samples.
 
-Confirm whether Money is empty because the source has no records, the integration lacks access, or the data-source ID is wrong. Capture property names and types without writing mirror data.
+Then deploy the registry change and verify production reads Money records plus existing Checkbox and Number values.
 
-Then define the approved Money display fields and typed custom-property contract before enabling new UI fields.
-
-Do not create a master/admin bypass. Do not run a real mirror write until the Money schema and sensitivity review pass.
+Delete the two `[DEV SAMPLE]` Notion pages after testing if they are no longer needed. Do not delete any non-sample Money records.

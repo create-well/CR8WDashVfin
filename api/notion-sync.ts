@@ -1,15 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { ENABLED_NOTION_SOURCES } from './notion-sources';
 
 const TABLE = 'kv_store_8dcd9693';
-const SOURCES = {
-  people: 'b97bcbdf-2b1b-488d-9d07-4012b031732e',
-  flows: 'c1677843-dd13-4e37-9f80-e960b26847dc',
-  moves: '5597e583-f7df-4f6c-90b0-296a26c57454',
-  content: 'cd410d33-8052-4897-8226-3a3ca84ea8bc',
-  money: '55832c19-38fa-44cb-b4c2-0174b4c5b207',
-} as const;
-
 function database() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
@@ -32,6 +25,8 @@ function propertyValue(property: any): unknown {
   if (!property || !property.type) return null;
   const value = property[property.type];
   if (property.type === 'title' || property.type === 'rich_text') return (value ?? []).map((item: any) => item.plain_text ?? item.text?.content ?? '').join('');
+  if (property.type === 'checkbox') return Boolean(value);
+  if (property.type === 'number') return typeof value === 'number' ? value : null;
   if (property.type === 'select' || property.type === 'status') return value?.name ?? null;
   if (property.type === 'multi_select') return (value ?? []).map((item: any) => item.name);
   if (property.type === 'date') return value ? { start: value.start ?? null, end: value.end ?? null, time_zone: value.time_zone ?? null } : null;
@@ -94,8 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let recordsSeen = 0;
     let latestSourceEdit: string | null = null;
 
-    for (const [source, dataSourceId] of Object.entries(SOURCES)) {
-      const records = await fetchSource(source, dataSourceId);
+    for (const [source, config] of ENABLED_NOTION_SOURCES) {
+      const records = await fetchSource(source, config.dataSourceId);
       snapshots[source] = records;
       recordsSeen += records.length;
       for (const record of records) {

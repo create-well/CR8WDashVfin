@@ -9,43 +9,41 @@
 - Notion owns operational truth. Supabase is the read-only mirror plus auth, calendar tokens, and intake staging.
 - Existing unrelated user changes remain uncommitted and untouched.
 
-## Completed Integration
+## Money Notion API Test
 
-The protected `api/notion-sync.ts` operator action writes the isolated Notion mirror keys. The read-only `api/dashboard-sync.ts` function returns operational dashboard data, all five Notion mirror collections, and freshness metadata from Supabase.
+The Money data source was accessed successfully through the Notion API. Data-source ID: `55832c19-38fa-44cb-b4c2-0174b4c5b207`. The API returned object type `data_source`, title `MONEY`, and database ID `acc5fe2f-deca-4f89-89e1-79e32ddbc24d`.
 
-The dashboard frontend reads `/api/dashboard-sync`, propagates `notionMirrors` through `DashboardContext`, and renders `NotionMirrorSummary` on the team home page.
+The schema contains Name (title), Amount (number), Kind (select), Direction (select), Stage (select), Actual (date), Expected (date), Owner (relation), Flow (relation), Person or Org (relation), Doc (url), and ID (unique ID).
 
-## Automatic Refresh and Discovery
+Two clearly labeled reversible development records were created and verified through the Notion API:
 
-The frontend polls the dashboard sync endpoint every 30 seconds while the tab is visible. It uses jitter, backs off after failures up to five minutes, slows to two minutes while hidden, and triggers an immediate refresh when the tab becomes visible again.
+| Record | Amount | Page ID |
+| --- | ---: | --- |
+| [DEV SAMPLE] Money income test | 123.45 | `3d724acf-799d-812e-b26f-fb8a6d07e953` |
+| [DEV SAMPLE] Money expense test | -67.89 | `3d724acf-799d-817d-baaf-eac706a5abd6` |
 
-The Notion panel supports source filters across People, Flows, Moves, Content, Money, and All sources. Search is case-insensitive across source name, page ID, extracted record label, and serialized property values. Results are capped at 12 rendered cards.
+These samples exist in Notion. They have not been written to the Supabase mirror by this task because the protected production operator token was not used. The next safe step is a dry-run operator sync, followed by a deliberate mirror refresh if the result is correct.
 
-## Production and Sync Audit
+## Source Registry Implementation
 
-Production deployment `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r` is Ready and aliased to `https://www.cr8w.com`.
+Added `api/notion-sources.ts` as the shared metadata-driven registry. Each source now declares its data-source ID, display label, enabled state, display fields, and sensitivity level. Both `api/notion-sync.ts` and `api/dashboard-sync.ts` derive their enabled source list and mirror keys from this registry.
 
-The latest Vercel runtime log sample showed one successful `GET /api/dashboard-sync` request with HTTP 200. This confirms successful reads but is not enough to estimate sustained polling volume because no long-running browser session was active during the log window.
+The Notion normalizer now handles Checkbox values as booleans and Number values as finite numbers or null. A schema scan found Checkbox properties in Flows (`Public?`) and Content (`Final?`), and Number properties in Flows (`Capacity`) and Money (`Amount`).
 
-A direct Supabase mirror audit confirmed:
+## Validation
 
-| Mirror key | Records |
-| --- | ---: |
-| `cr8w_notion_mirror_people` | 13 |
-| `cr8w_notion_mirror_flows` | 3 |
-| `cr8w_notion_mirror_moves` | 4 |
-| `cr8w_notion_mirror_content` | 2 |
-| `cr8w_notion_mirror_money` | 0 |
+- Notion API Money schema request: passed.
+- Notion API Money query before samples: passed with zero records.
+- Notion API sample creation: passed for two records.
+- Notion API sample query after creation: passed with two records and numeric Amount values.
+- Registered-source Checkbox and Number schema scan: passed.
+- Vite production build: passed.
+- Esbuild parsing for `api/notion-sync.ts` and `api/dashboard-sync.ts`: passed.
+- No temporary inspector scripts remain.
 
-The sync metadata reports `source: notion`, `mirrorUpdatedAt: 2026-09-10T12:33:42.193Z`, `sourceLastEditedAt: 2026-09-10T11:33:00.000Z`, and the verified run ID. A production endpoint sample returned HTTP 200 in approximately 0.92 seconds with a 54.9 KB payload. The read function uses one Supabase query for the operational keys, freshness metadata, and mirror keys.
+## Existing Production State
 
-## Authentication Boundary
-
-The application uses individual Supabase email/password accounts. No master password, hard-coded admin credential, or bypass is present. Do not add one. Use a dedicated development account through Register, or use a separate Supabase development project with a seeded test user. Server credentials and operator tokens must remain server-side and secret.
-
-## Next Notion Source Iteration
-
-The detailed plan is in `.handoff/NOTION_SOURCES_NEXT.md`. The recommended next step is a metadata-driven source registry. Money is already configured but has zero records, so validate its Notion data-source access and schema before changing the UI. Custom properties should move toward a backward-compatible typed property envelope, with sensitivity-aware display maps for financial data.
+Production remains on deployment `dpl_5mmuZVWDdLY64A8ztodh5srZ4E9r` until this registry change is deployed. Existing production mirror counts remain People 13, Flows 3, Moves 4, Content 2, Money 0 until the operator sync runs again.
 
 ## Existing Unrelated Working-Tree Changes
 

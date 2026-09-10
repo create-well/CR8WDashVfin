@@ -1,17 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { ENABLED_NOTION_SOURCES } from './notion-sources';
 
 const TABLE = 'kv_store_8dcd9693';
-const KEYS = [
+const OPERATIONAL_KEYS = [
   'cr8w_tasks', 'cr8w_stations', 'cr8w_forum', 'cr8w_messages',
   'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
   'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
   'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
   'cr8w_calendar_events', 'cr8w_notion_sync_meta',
-  'cr8w_notion_mirror_people', 'cr8w_notion_mirror_flows',
-  'cr8w_notion_mirror_moves', 'cr8w_notion_mirror_content',
-  'cr8w_notion_mirror_money',
-] as const;
+];
+const MIRROR_KEYS = ENABLED_NOTION_SOURCES.map(([source]) => `cr8w_notion_mirror_${source}`);
+const KEYS = [...OPERATIONAL_KEYS, ...MIRROR_KEYS];
 
 function supabase() {
   const url = process.env.SUPABASE_URL;
@@ -53,13 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const values = Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
     const freshness = parseObject(values.cr8w_notion_sync_meta);
-    const mirrors = {
-      people: parseList(values.cr8w_notion_mirror_people),
-      flows: parseList(values.cr8w_notion_mirror_flows),
-      moves: parseList(values.cr8w_notion_mirror_moves),
-      content: parseList(values.cr8w_notion_mirror_content),
-      money: parseList(values.cr8w_notion_mirror_money),
-    };
+    const mirrors = Object.fromEntries(
+      ENABLED_NOTION_SOURCES.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`])]),
+    );
 
     res.json({
       tasks: parseList(values.cr8w_tasks),
