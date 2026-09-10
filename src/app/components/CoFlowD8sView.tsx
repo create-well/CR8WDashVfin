@@ -4,6 +4,11 @@ import { PERSONS, capitalize, formatTimestamp } from './data';
 import type { CoFlowDate, CoFlowCheckin, CalendarEventKV } from './api';
 import * as api from './api';
 import { CoFlowUpcomingFeature } from '../../features/coflow/CoFlowUpcomingFeature';
+import { DateCard } from '../../features/coflow/components/DateCard';
+import { AddDateModal, EditD8Form as FeatureEditD8Form } from '../../features/coflow/components/AddDateModal';
+import { AgendaEditor } from '../../features/coflow/components/AgendaEditor';
+import { ArchivedDates } from '../../features/coflow/components/ArchivedDates';
+import { CheckInList } from '../../features/coflow/components/CheckInList';
 
 type D8Tab = 'upcoming' | 'checkin' | 'archive' | 'agenda';
 
@@ -247,11 +252,11 @@ export function CoFlowD8sView({
           </div>
 
           {showCreateD8 && !editingD8 && (
-            <CreateD8Form onSubmit={(d) => { onAddCoFlowDate(d); setShowCreateD8(false); }} />
+            <AddDateModal onSubmit={(d) => { onAddCoFlowDate(d); setShowCreateD8(false); }} />
           )}
 
           {editingD8 && nextD8 && (
-            <EditD8Form
+            <FeatureEditD8Form
               d8={nextD8}
               onSave={(updates) => { onUpdateCoFlowDate(nextD8.id, updates); setEditingD8(false); }}
               onCancel={() => setEditingD8(false)}
@@ -267,7 +272,7 @@ export function CoFlowD8sView({
             </div>
           )}
 
-          {nextD8 && !editingD8 && <NextD8Card d8={nextD8} onUpdate={onUpdateCoFlowDate} onDelete={onDeleteCoFlowDate} onEdit={() => setEditingD8(true)} />}
+          {nextD8 && !editingD8 && <DateCard d8={nextD8} onUpdate={onUpdateCoFlowDate} onDelete={onDeleteCoFlowDate} onEdit={() => setEditingD8(true)} />}
 
           <CoFlowUpcomingFeature
             upcomingD8s={upcomingD8s}
@@ -279,7 +284,7 @@ export function CoFlowD8sView({
 
       {/* ── CHECK-IN TAB ── */}
       {tab === 'checkin' && (
-        <CheckinTab
+        <CheckInList
           coflowCheckins={coflowCheckins}
           weekCheckins={weekCheckins}
           checkedInPersons={checkedInPersons}
@@ -293,7 +298,7 @@ export function CoFlowD8sView({
 
       {/* ── AGENDA TAB ── */}
       {tab === 'agenda' && (
-        <AgendaBuilder
+        <AgendaEditor
           d8={nextD8}
           onUpdateD8={nextD8 ? (updates) => onUpdateCoFlowDate(nextD8.id, updates) : undefined}
         />
@@ -301,7 +306,7 @@ export function CoFlowD8sView({
 
       {/* ── ARCHIVE TAB ── */}
       {tab === 'archive' && (
-        <ArchiveTab
+        <ArchivedDates
           archivedD8s={archivedD8s}
           expandedArchive={expandedArchive}
           setExpandedArchive={setExpandedArchive}
