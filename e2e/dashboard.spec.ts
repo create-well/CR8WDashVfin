@@ -17,7 +17,10 @@ const dashboardPayload = {
     }],
   },
   notionSources: [{ key: 'engineeringDelivery', label: 'Engineering Delivery', visible: true, searchable: true, sensitivity: 'restricted', displayFields: ['Name', 'Stage'], recordCount: 1 }],
-  freshness: { source: 'notion', mirrorUpdatedAt: '2026-09-10T12:00:00.000Z', sourceLastEditedAt: '2026-09-10T12:00:00.000Z', syncRunId: 'e2e' },
+  freshness: {
+    source: 'notion', mirrorUpdatedAt: '2026-09-10T12:00:00.000Z', sourceLastEditedAt: '2026-09-10T12:00:00.000Z', syncRunId: 'e2e',
+    sourceFreshness: Object.fromEntries(['people', 'flows', 'moves', 'content', 'money', 'engineeringDelivery'].map(source => [source, { status: 'ok', recordCount: source === 'engineeringDelivery' ? 1 : 0, sourceLastEditedAt: '2026-09-10T12:00:00.000Z', lastSuccessfulSyncAt: '2026-09-10T12:00:00.000Z' }])),
+  },
 };
 
 test.beforeEach(async ({ page }) => {
@@ -30,7 +33,7 @@ test.beforeEach(async ({ page }) => {
     const partialFailure = url.searchParams.get('e2e') === 'partial';
     const staleMirror = url.searchParams.get('e2e') === 'stale';
     const freshness = partialFailure
-      ? { ...dashboardPayload.freshness, sourceFreshness: { engineeringDelivery: { status: 'error', recordCount: 1, sourceLastEditedAt: '2026-09-10T12:00:00.000Z', lastSuccessfulSyncAt: '2026-09-10T11:00:00.000Z', error: 'Notion request failed with status 429' } } }
+      ? { ...dashboardPayload.freshness, sourceFreshness: { ...dashboardPayload.freshness.sourceFreshness, engineeringDelivery: { status: 'error', recordCount: 1, sourceLastEditedAt: '2026-09-10T12:00:00.000Z', lastSuccessfulSyncAt: '2026-09-10T11:00:00.000Z', error: 'Notion request failed with status 429' } } }
       : staleMirror
         ? { ...dashboardPayload.freshness, mirrorUpdatedAt: '2026-09-09T12:00:00.000Z' }
         : dashboardPayload.freshness;
@@ -45,6 +48,8 @@ test.beforeEach(async ({ page }) => {
 test('shows the dashboard and filters typed Engineering Delivery properties', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Team source, visible here' })).toBeVisible();
+  await expect(page.getByLabel('Per-source Notion freshness')).toContainText('Engineering Delivery');
+  await expect(page.getByLabel('Per-source Notion freshness')).toContainText('Healthy · synced');
   await expect(page.getByRole('button', { name: /Engineering Delivery/ })).toBeVisible();
   await expect(page.getByText('Typed mirror rollout', { exact: true })).toBeVisible();
 
@@ -68,6 +73,7 @@ test('renders the sign-in gate without an existing session', async ({ browser })
 test('shows partial-source failure while preserving the last good mirror data', async ({ page }) => {
   await page.goto('/?e2e=partial');
   await expect(page.getByRole('status')).toContainText('Some sources failed; showing last good data');
+  await expect(page.getByLabel('Per-source Notion freshness')).toContainText('Sync error · last good');
   await expect(page.getByText('Typed mirror rollout', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
 });

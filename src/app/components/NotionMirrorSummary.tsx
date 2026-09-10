@@ -90,6 +90,22 @@ function relativeTime(iso: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
+export function sourceFreshnessLabel(freshness: SyncFreshness, key: MirrorKey): string {
+  const source = freshness.sourceFreshness?.[key];
+  if (!source) return 'Status unavailable';
+  if (source.status === 'error') {
+    return source.lastSuccessfulSyncAt ? `Sync error · last good ${relativeTime(source.lastSuccessfulSyncAt)}` : 'Sync error · no successful sync';
+  }
+  return `Healthy · synced ${relativeTime(source.lastSuccessfulSyncAt)}`;
+}
+
+function sourceFreshnessTone(freshness: SyncFreshness, key: MirrorKey): { color: string; background: string } {
+  const source = freshness.sourceFreshness?.[key];
+  if (source?.status === 'error') return { color: '#9A3D32', background: 'rgba(255, 69, 58, 0.08)' };
+  if (source?.status === 'ok') return { color: '#236B3A', background: 'rgba(48, 209, 88, 0.08)' };
+  return { color: 'var(--text-muted, #6B5F7A)', background: 'rgba(116, 94, 151, 0.06)' };
+}
+
 interface NotionMirrorSummaryProps {
   mirrors: NotionMirrors;
   freshness: SyncFreshness;
@@ -142,6 +158,21 @@ export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryP
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #6B5F7A)' }}>
           {freshness.source === 'notion' ? `Updated ${relativeTime(freshness.mirrorUpdatedAt)}` : 'Awaiting Notion sync'}
         </div>
+      </div>
+
+      <div aria-label="Per-source Notion freshness" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: 6, marginTop: 12 }}>
+        {collections.map(({ key, label, records }) => {
+          const tone = sourceFreshnessTone(freshness, key);
+          return (
+            <div key={key} style={{ minWidth: 0, padding: '7px 9px', borderRadius: 8, background: tone.background, color: tone.color }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, fontSize: '0.66rem', fontWeight: 600 }}>
+                <span>{label}</span>
+                <span>{records.length}</span>
+              </div>
+              <div style={{ marginTop: 3, fontSize: '0.61rem', lineHeight: 1.25 }}>{sourceFreshnessLabel(freshness, key)}</div>
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>

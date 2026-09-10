@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPropertyOptions, matchesTypedFilters, propertyDisplayValue, recordLabel } from '../NotionMirrorSummary';
+import { buildPropertyOptions, matchesTypedFilters, propertyDisplayValue, recordLabel, sourceFreshnessLabel } from '../NotionMirrorSummary';
 
 const typedRecord = {
   source: 'engineeringDelivery' as const,
@@ -15,6 +15,12 @@ const typedRecord = {
 };
 
 describe('NotionMirrorSummary typed properties', () => {
+  it('labels per-source freshness states without exposing backend error details', () => {
+    expect(sourceFreshnessLabel({ source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null, sourceFreshness: { money: { status: 'ok', recordCount: 2, sourceLastEditedAt: null, lastSuccessfulSyncAt: '2026-09-10T12:00:00.000Z' } } }, 'money')).toContain('Healthy · synced');
+    expect(sourceFreshnessLabel({ source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null, sourceFreshness: { money: { status: 'error', recordCount: 2, sourceLastEditedAt: null, lastSuccessfulSyncAt: '2026-09-10T11:00:00.000Z', error: 'secret backend detail' } } }, 'money')).toContain('Sync error · last good');
+    expect(sourceFreshnessLabel({ source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null }, 'money')).toBe('Status unavailable');
+  });
+
   it('uses the value inside typed Notion properties for labels', () => {
     expect(recordLabel({
       source: 'money',
@@ -50,5 +56,13 @@ describe('NotionMirrorSummary typed properties', () => {
     expect(matchesTypedFilters(typedRecord, '', 'Stage', 'Review')).toBe(true);
     expect(matchesTypedFilters(typedRecord, '', 'Stage', 'Blocked')).toBe(false);
     expect(matchesTypedFilters(typedRecord, '', 'Owner', 'all')).toBe(false);
+  });
+
+  it('labels unavailable and failed per-source freshness without hiding the reason', () => {
+    expect(sourceFreshnessLabel({ source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null }, 'money')).toBe('Status unavailable');
+    expect(sourceFreshnessLabel({
+      source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: null,
+      sourceFreshness: { money: { status: 'error', recordCount: 2, sourceLastEditedAt: null, lastSuccessfulSyncAt: null, error: 'timeout' } },
+    }, 'money')).toBe('Sync error · no successful sync');
   });
 });
