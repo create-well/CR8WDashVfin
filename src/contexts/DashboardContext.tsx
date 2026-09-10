@@ -162,21 +162,43 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     fetchSyncRef.current = fetchSync;
     fetchSync(false);
 
-    let pollInterval = 15_000;
+    const MIRROR_REFRESH_INTERVAL = 30_000;
+    const HIDDEN_REFRESH_INTERVAL = 120_000;
     const MAX_INTERVAL = 300_000;
 
     function schedulePoll() {
+      const baseInterval = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+        ? HIDDEN_REFRESH_INTERVAL
+        : MIRROR_REFRESH_INTERVAL;
+      const jitter = Math.floor(baseInterval * (Math.random() * 0.2 - 0.1));
       pollRef.current = setTimeout(async () => {
         await fetchSyncRef.current?.(true);
-        pollInterval = silentFailCount.current > 0
-          ? Math.min(pollInterval * 2, MAX_INTERVAL)
-          : 15_000;
-        schedulePoll();
-      }, pollInterval);
+        const retryInterval = silentFailCount.current > 0
+          ? Math.min(baseInterval * 2 ** Math.min(silentFailCount.current, 3), MAX_INTERVAL)
+          : baseInterval;
+        schedulePollWithDelay(retryInterval + jitter);
+      }, baseInterval + jitter);
     }
-    schedulePoll();
 
-    return () => { if (pollRef.current) clearTimeout(pollRef.current as any); };
+    function schedulePollWithDelay(delay: number) {
+      if (pollRef.current) clearTimeout(pollRef.current);
+      pollRef.current = setTimeout(() => schedulePoll(), Math.max(1_000, delay));
+    }
+
+    function refreshOnVisible() {
+      if (document.visibilityState !== 'visible') return;
+      if (pollRef.current) clearTimeout(pollRef.current);
+      fetchSyncRef.current?.(true);
+      schedulePoll();
+    }
+
+    schedulePoll();
+    document.addEventListener('visibilitychange', refreshOnVisible);
+
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current as any);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
   }, []);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
