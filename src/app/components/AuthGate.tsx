@@ -17,12 +17,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js';
 import cwLogoImg from '../../assets/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
-// ── Supabase browser client (inline config — publishable key is public-safe) ──
-const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i';
+// ── Supabase browser client (Vite-injected, browser-safe configuration) ───────
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
 let _client: SupabaseClient | null = null;
 function client(): SupabaseClient {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error('Supabase browser configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
+  }
   if (!_client) {
     _client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: 'cr8w_supabase_auth' },
@@ -62,7 +65,7 @@ export async function signOut(): Promise<void> {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props { onAuthenticated: (profileKey: string) => void; }
-type Mode = 'signin' | 'register';
+type Mode = 'signin' | 'register' | 'reset';
 
 function Screen({ children }: { children: React.ReactNode }) {
   return (
@@ -164,6 +167,23 @@ export function AuthGate({ onAuthenticated }: Props) {
     }
   }
 
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setBusy(true); setError(''); setNotice('');
+    const { error: err } = await client().auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    setBusy(false);
+    if (err) {
+      setError(err.message);
+      triggerShake();
+      return;
+    }
+    setNotice('If an account exists for that email, a password reset link is on its way.');
+    setMode('signin');
+  }
+
   if (checkingSession) {
     return (
       <Screen>
@@ -202,7 +222,7 @@ export function AuthGate({ onAuthenticated }: Props) {
           </div>
         )}
 
-        <form onSubmit={mode === 'signin' ? handleSignIn : handleRegister} noValidate>
+        <form onSubmit={mode === 'signin' ? handleSignIn : mode === 'register' ? handleRegister : handleResetPassword} noValidate>
           {/* Register-only: display name */}
           {mode === 'register' && (
             <div style={{ marginBottom: 14 }}>
@@ -220,7 +240,7 @@ export function AuthGate({ onAuthenticated }: Props) {
           </div>
 
           {/* Password */}
-          <div style={{ marginBottom: mode === 'register' ? 16 : 20 }}>
+          {mode !== 'reset' && <div style={{ marginBottom: mode === 'register' ? 16 : 20 }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
               <input type={showPw ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
@@ -231,7 +251,7 @@ export function AuthGate({ onAuthenticated }: Props) {
                 {showPw ? '🙈' : '👁'}
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* Register-only: profile picker */}
           {mode === 'register' && (
@@ -252,10 +272,16 @@ export function AuthGate({ onAuthenticated }: Props) {
             </div>
           )}
 
+          {mode === 'signin' && (
+            <button type="button" onClick={() => { setMode('reset'); setError(''); setNotice(''); }} style={{ display: 'block', margin: '-6px 0 16px auto', background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+              Forgot password?
+            </button>
+          )}
+
           {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
 
           <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
-            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign In →' : 'Create Account →'}
+            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign In →' : mode === 'register' ? 'Create Account →' : 'Send reset link →'}
           </button>
         </form>
 
