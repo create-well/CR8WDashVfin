@@ -10,6 +10,14 @@
 - Notion owns operational truth. Supabase is the read mirror plus auth, calendar tokens, intake staging, and existing dashboard records.
 - Existing unrelated user changes remain uncommitted and untouched.
 
+## Current Verification Blocker
+
+My Browser navigation reaches the live site, but screenshot upload and DOM/console artifact collection fail in the browser-extension layer. The same public route produces a valid screenshot in the isolated sandbox browser, which isolates the failure to the My Browser connector path rather than the deployed app. No connector configuration was changed.
+
+## Engineering Delivery Decision
+
+The approved source family is the existing CR8W Engineering Delivery data source `eb498877-a74f-4abe-bac3-8d1dfbc62db8`, not the separate System Admin master sources. The source remains restricted; no user grant or dashboard exposure was created. Its schema and the typed envelope draft are recorded in `docs/RESTRICTED_SOURCE_AUTHORIZATION_DRAFT.md` and `docs/TYPED_PROPERTY_ENVELOPE_PLAN.md`.
+
 ## Production Registry Deployment
 
 The metadata-driven source registry, explicit Checkbox and Number normalization, Vercel ESM import fix, and parallel Notion source reads are deployed successfully.

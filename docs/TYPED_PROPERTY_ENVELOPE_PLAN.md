@@ -60,18 +60,18 @@ interface NotionPropertyEnvelope {
 
 ## Source-specific mapping order
 
-The next approved source should be **Engineering Delivery** because it is already present in the source registry, is restricted, and has a concrete operational record. Its current record is blocked and explicitly asks for a source-target decision before a production sync PR. Do not enable additional sources until that ambiguity is resolved.
+The next approved source is **Engineering Delivery** because it is already present in the source registry, is restricted, and has a concrete operational record. The source-family ambiguity is resolved in favor of the existing CR8W Engineering Delivery data source, not the separate System Admin master sources. This does not authorize any dashboard user grant or production mirror write; server-side restricted-source enforcement remains a prerequisite.
 
 | Source | Current status | Highest-value typed fields | Key validation concern |
 |---|---|---|---|
-| Engineering Delivery | Registered and enabled; one blocked record observed | `Stage` select, `Surface` multi-select, `Target` date, `Owner` person, URL fields, `Blocked By` text | Decide whether this dashboard mirrors current Create Well OS sources or separate System Admin master sources |
+| Engineering Delivery | Registered and enabled; one blocked record observed; source family selected | `Stage` select, `Surface` multi-select, `Target` date, `Owner` person, URL fields, `Blocked By` text | Implement server-side restricted-source enforcement before exposure |
 | Money | Registered, restricted, and mirrored | `Amount` number, `Direction` select, `Stage` select, `Actual`/`Expected` dates, relations, URL | Preserve numeric values and restricted sensitivity; retain labeled samples until UI verification |
 
 The Engineering Delivery schema exposes `Target` as a date with expanded SQL columns (`date:Target:start`, `date:Target:end`, and `date:Target:is_datetime`). The implementation must treat those expanded columns as one date envelope rather than exposing them as unrelated fields.
 
 ## Delivery sequence
 
-1. **Resolve source authorization.** Confirm the intended Engineering Delivery source family and obtain approval for the exact data source before changing the registry or mirror behavior.
+1. **Resolve source authorization.** The source family is now recorded as the existing CR8W Engineering Delivery data source. Obtain the named server-managed user grant or role policy before changing dashboard exposure or performing a real mirror write.
 2. **Capture schema evidence.** Record property names, Notion types, select options, relation targets, date expansion rules, sensitivity, and expected display fields.
 3. **Implement closed typing.** Replace the open `type: string` envelope with the closed property-type union and add source-property provenance and non-fatal warnings.
 4. **Add normalization tests.** Cover number, checkbox, select, status, multi-select, date ranges, relations, URL values, unique IDs, formulas, rollups, unsupported types, and invalid numbers.
