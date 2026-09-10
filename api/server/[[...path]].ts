@@ -29,9 +29,13 @@ async function verifyRequest(req: VercelRequest): Promise<boolean> {
   // JWT path: verify as a Supabase user access token
   if (pubKey) {
     try {
-      const c = createClient(process.env.SUPABASE_URL!, pubKey, { auth: { persistSession: false } });
-      const { data, error } = await c.auth.getUser(token);
-      if (!error && data.user) return true;
+      const response = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          apikey: pubKey,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) return true;
     } catch { /* fall through */ }
   }
   return !pubKey; // allow when no key configured (dev/preview)
