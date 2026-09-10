@@ -19,7 +19,7 @@ function database() {
 
 async function writeMirror(key: string, value: unknown) {
   const { error } = await database().from(TABLE).upsert({ key, value: JSON.stringify(value) });
-  if (error) throw new Error('Mirror write failed');
+  if (error) throw new Error(`Mirror write failed for ${key}: ${error.code ?? 'unknown'}`);
 }
 
 function authorized(req: VercelRequest) {
