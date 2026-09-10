@@ -20,15 +20,33 @@ describe('dashboard source authorization', () => {
     expect(canReadSource('engineeringDelivery', 'restricted', user)).toBe(false);
   });
 
-  it('allows only server-managed roles or explicit source grants', () => {
+  it('does not treat a broad role or profile label as Engineering Delivery authorization', () => {
     expect(canReadSource('engineeringDelivery', 'restricted', {
       id: 'user-1', app_metadata: { cr8w_role: 'engineering' },
+    })).toBe(false);
+    expect(canReadSource('engineeringDelivery', 'restricted', {
+      id: 'user-2', app_metadata: { cr8w_profile: 'engineering' },
+    })).toBe(false);
+  });
+
+  it('allows Engineering Delivery only through an explicit server-managed capability', () => {
+    expect(canReadSource('engineeringDelivery', 'restricted', {
+      id: 'user-3', app_metadata: { cr8w_source_grants: ['engineeringDelivery'] },
     })).toBe(true);
     expect(canReadSource('engineeringDelivery', 'restricted', {
-      id: 'user-2', app_metadata: { cr8w_source_grants: ['engineeringDelivery'] },
+      id: 'user-4', app_metadata: { capabilities: { engineeringDelivery: { read: true } } },
     })).toBe(true);
     expect(canReadSource('engineeringDelivery', 'restricted', {
-      id: 'user-3', app_metadata: { cr8w_source_grants: ['money'] },
+      id: 'user-5', app_metadata: { cr8w_source_grants: ['money'] },
+    })).toBe(false);
+  });
+
+  it('fails closed for restricted sources when authorization metadata is malformed', () => {
+    expect(canReadSource('engineeringDelivery', 'restricted', {
+      id: 'user-6', app_metadata: { capabilities: { engineeringDelivery: 'read' } },
+    })).toBe(false);
+    expect(canReadSource('money', 'restricted', {
+      id: 'user-7', app_metadata: { source_grants: { money: true } },
     })).toBe(false);
   });
 

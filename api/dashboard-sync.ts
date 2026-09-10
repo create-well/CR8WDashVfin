@@ -24,6 +24,13 @@ export interface SourceCapabilities {
   restricted: boolean;
 }
 
+const ALLOWED_ORIGINS = new Set([
+  'https://www.cr8w.com',
+  'https://cr8w.com',
+  'http://localhost:5173',
+  'http://localhost:4173',
+]);
+
 export function bearerToken(authorization: string | undefined): string | null {
   const match = authorization?.match(/^Bearer\s+(\S+)$/i);
   return match?.[1] ?? null;
@@ -31,6 +38,18 @@ export function bearerToken(authorization: string | undefined): string | null {
 
 function includesSourceGrant(value: unknown, source: NotionSourceKey): boolean {
   return Array.isArray(value) && value.some(item => item === source || item === '*');
+}
+
+function hasEngineeringDeliveryCapability(metadata: Record<string, unknown>): boolean {
+  const grants = [metadata.cr8w_source_grants, metadata.source_grants, metadata.capabilities];
+  return grants.some(value => {
+    if (includesSourceGrant(value, 'engineeringDelivery')) return true;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Record<string, unknown>;
+    return record.engineeringDelivery === true
+      || (record.engineeringDelivery && typeof record.engineeringDelivery === 'object'
+        && (record.engineeringDelivery as Record<string, unknown>).read === true);
+  });
 }
 
 export function canReadSource(
@@ -41,8 +60,8 @@ export function canReadSource(
   if (sensitivity !== 'restricted') return true;
   if (!user) return false;
   const metadata = user.app_metadata ?? {};
+  if (source === 'engineeringDelivery') return hasEngineeringDeliveryCapability(metadata);
   return metadata.cr8w_role === 'admin'
-    || metadata.cr8w_role === 'engineering'
     || includesSourceGrant(metadata.cr8w_source_grants, source)
     || includesSourceGrant(metadata.source_grants, source);
 }
@@ -65,10 +84,20 @@ function supabase(): Database {
 
 async function authenticatedUser(req: VercelRequest): Promise<AuthenticatedSourceUser | null> {
   const token = bearerToken(req.headers.authorization);
-  if (!token) return null;
+  if (!token) throw new Error('Unauthorized');
   const { data, error } = await supabase().auth.getUser(token);
   if (error || !data.user) throw new Error('Unauthorized');
   return { id: data.user.id, app_metadata: data.user.app_metadata ?? {} };
+}
+
+function applyCors(req: VercelRequest, res: VercelResponse) {
+  const origin = typeof req.headers.origin === 'string' ? req.headers.origin : null;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 }
 
 interface SourceFreshness {
@@ -100,9 +129,7 @@ function parseObject(raw: unknown): Record<string, unknown> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  applyCors(req, res);
   res.setHeader('Cache-Control', 'private, no-store');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'Method not allowed' }); return; }

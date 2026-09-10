@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ENABLED_NOTION_SOURCES, type NotionPropertySensitivity, type NotionSourceKey } from './notion-sources.js';
+import { normalizeNotionProperty } from './notion-property-envelope.js';
 
 const TABLE = 'kv_store_8dcd9693';
 type Database = SupabaseClient;
@@ -133,8 +134,9 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function propertyValue(property: NotionPropertyResponse | null | undefined, typed = false, sensitivity: NotionPropertySensitivity = 'team'): unknown {
+function propertyValue(sourceProperty: string, property: NotionPropertyResponse | null | undefined, typed = false, sensitivity: NotionPropertySensitivity = 'team'): unknown {
   if (!property || !property.type) return null;
+  if (typed) return normalizeNotionProperty(sourceProperty, property, sensitivity);
   const value = property[property.type];
   let normalized: unknown;
   if (property.type === 'title' || property.type === 'rich_text') {
@@ -160,11 +162,7 @@ function propertyValue(property: NotionPropertyResponse | null | undefined, type
     const rollup = asRecord(value);
     normalized = rollup.type === 'array' ? rollup.array : rollup[typeof rollup.type === 'string' ? rollup.type : ''] ?? null;
   } else normalized = value ?? null;
-  if (!typed) return normalized;
-  const displayValue = typeof normalized === 'string' || typeof normalized === 'number' || typeof normalized === 'boolean'
-    ? String(normalized)
-    : undefined;
-  return { type: property.type, value: normalized, ...(displayValue ? { displayValue } : {}), sensitivity } satisfies NotionPropertyValue;
+  return normalized;
 }
 
 function normalize(page: NotionPageResponse, source: NotionSourceKey, typedProperties = false, sensitivity: NotionPropertySensitivity = 'team'): MirrorRecord {
@@ -174,7 +172,7 @@ function normalize(page: NotionPageResponse, source: NotionSourceKey, typedPrope
     sourceUrl: page.url ?? null,
     sourceLastEditedAt: page.last_edited_time ?? null,
     archived: Boolean(page.archived),
-    properties: Object.fromEntries(Object.entries(page.properties ?? {}).map(([name, value]) => [name, propertyValue(value, typedProperties, sensitivity)])),
+    properties: Object.fromEntries(Object.entries(page.properties ?? {}).map(([name, value]) => [name, propertyValue(name, value, typedProperties, sensitivity)])),
   };
 }
 
