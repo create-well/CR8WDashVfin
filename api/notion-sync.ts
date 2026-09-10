@@ -89,8 +89,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let recordsSeen = 0;
     let latestSourceEdit: string | null = null;
 
-    for (const [source, config] of ENABLED_NOTION_SOURCES) {
-      const records = await fetchSource(source, config.dataSourceId);
+    const sourceResults = await Promise.all(
+      ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config.dataSourceId)] as const),
+    );
+    for (const [source, records] of sourceResults) {
       snapshots[source] = records;
       recordsSeen += records.length;
       for (const record of records) {
