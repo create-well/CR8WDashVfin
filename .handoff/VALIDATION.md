@@ -7,6 +7,7 @@
 - Fallback: the full test file was bundled with esbuild and executed in plain Node with a minimal vitest shim (`scripts/validate-mirror-summary.mjs`). All 15 assertions passed, including: registry-order collections, invisible-source hiding, unknown-key skipping, static-label fallback, Money amount formatting from typed envelopes and plain numbers, and null handling for missing or non-finite amounts.
 - `pnpm build` passed (built in 7m 36s under the same load; `ThisWeekPage` chunk hash changed, confirming the new code is in the bundle).
 - Resolved 2026-09-10 ~14:06: real Vitest passed. Focused file: 15/15 in 45s. Full serial suite (`--maxWorkers=1`): 8 files, 50 tests passed in 78s. Root cause of the earlier worker-start timeouts was concurrent vitest runs from another IDE session on this same repo plus machine load; once those cleared, workers started normally. The esbuild harness remains in `scripts/` as a backup but is not needed for normal runs.
+- Deployed 2026-09-10 ~14:15: commit `027eb65` from clean archive to `cr8w-dash-vfin`, Ready, aliased to `https://www.cr8w.com`. Live: homepage HTTP 200; unauthenticated `/api/dashboard-sync` HTTP 401 (fail-closed); deployed `ThisWeekPage-Zd-PgvrY.js` contains the new code markers. Outstanding: one authenticated visual pass on the Money amounts (needs a logged-in browser).
 
 ## Production Money Filter Test
 
@@ -33,3 +34,37 @@ Reviewed and corrected `AI_HANDOFF_PROMPT.md`:
 ## Next Iteration Plan
 
 `NOTION_SOURCES_NEXT.md` now prioritizes a typed property envelope, a protected source discovery manifest, one approved new database at a time, registry-driven UI metadata, visible Money amounts, and payload thresholds for moving search server-side.
+
+
+## Typed-contract validation update
+
+> Provenance: Manus sandbox session, 2026-09-10 (`_incoming/manus-20260910/VALIDATION.md`). Validation ran in the sandbox clone `/home/ubuntu/CR8WDashVfin-validation`, not on this machine.
+
+The desktop sidecar was unavailable, and the mounted path contained only the component and handoff artifacts. Validation was completed in `/home/ubuntu/CR8WDashVfin-validation`, cloned from `create-well/CR8WDashVfin` on `feat/notion-freshness-contract`.
+
+The typed property slice now includes the protected `api/notion-source-metadata.ts` endpoint, registry-driven source metadata in `api/dashboard-sync.ts`, typed Money normalization in `api/notion-sync.ts`, frontend contracts, context wiring, and dynamic source filters with USD Money cards.
+
+| Check | Status |
+| --- | --- |
+| Frontend production build | Pass |
+| Changed API files parsed with esbuild | Pass |
+| `git diff --check` | Pass |
+| Production deploy from this slice | Not run |
+| Protected metadata endpoint against production | Not run |
+| Production dashboard endpoint after this slice | Not run |
+| Browser UI check after this slice | Not run |
+
+The build retains the pre-existing large-chunk warning: the main JavaScript chunk is approximately 951 kB minified. Defer code-splitting until measured active-use performance shows a problem.
+
+Do not claim this slice is production-ready until the pushed commit is deployed, the protected metadata endpoint is checked, `GET /api/dashboard-sync` confirms source metadata and Money count 2, and the Money card visual check passes.
+
+
+## Preview deployment verification
+
+> Provenance: Manus sandbox session, 2026-09-10 (`_incoming/manus-20260910/VALIDATION.md`). Preview deploy was created by the Vercel Git integration from the sandbox push.
+
+Commit `671a955` produced Vercel preview deployment `dpl_F3TzxDx4FX5b3M4VBTy32eQE19gp` at `https://cr8w-dash-vfin-rjibk3olb-monnylog.vercel.app` with state `READY`.
+
+The deployed dashboard endpoint returned HTTP 200 with freshness source `notion`, mirror counts People 13, Flows 3, Moves 4, Content 2, Money 2, and source keys for all five registered sources. The protected metadata endpoint correctly returned HTTP 401 without authorization. The success-path metadata check is deferred because `NOTION_SYNC_OPERATOR_TOKEN` is not available in the sandbox.
+
+The local `vercel` CLI was unavailable, so the existing Vercel Git integration created the branch preview automatically after the GitHub push. The production alias `cr8w.com` was not changed by this branch deployment.

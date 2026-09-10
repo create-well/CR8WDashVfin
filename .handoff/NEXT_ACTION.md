@@ -1,12 +1,14 @@
 # Next Action
 
-## Registry-Driven Mirror UI — 2026-09-10 (implemented, not yet deployed)
+## Registry-Driven Mirror UI — 2026-09-10 (deployed)
 
-Iteration 4 from `NOTION_SOURCES_NEXT.md` is implemented on `feat/notion-freshness-contract`, uncommitted. `NotionMirrorSummary.tsx` now derives its source list, labels, and filter options from the server-sent `notionSources` registry metadata (key, label, visible, recordCount) via a new exported `sourceCollections(mirrors, sources)` helper, falling back to the static label table only when no metadata has arrived. `ThisWeekPage` passes `data.notionSources` through. Money cards now render the numeric `Amount` below the record name through `moneyAmountDisplay(record)` (typed envelope or plain number; no currency until the schema provides one; null-safe for missing or non-finite values).
+Iteration 4 from `NOTION_SOURCES_NEXT.md` is implemented, validated, and deployed. `NotionMirrorSummary.tsx` derives its source list, labels, and filter options from the server-sent `notionSources` registry metadata (key, label, visible, recordCount) via a new exported `sourceCollections(mirrors, sources)` helper, falling back to the static label table only when no metadata has arrived. `ThisWeekPage` passes `data.notionSources` through. Money cards render the numeric `Amount` below the record name through `moneyAmountDisplay(record)` (typed envelope or plain number; no currency until the schema provides one; null-safe for missing or non-finite values).
 
-Validation is complete as of 2026-09-10 ~14:07: the esbuild fallback passed all 15 assertions, and the real Vitest suite then passed cleanly once a concurrent IDE vitest run on this repo cleared — focused file 15/15, full serial suite 8 files / 50 tests. `pnpm build` passed earlier in the session. The commit is `6e6213b` on `feat/notion-freshness-contract`.
+Validation: real Vitest passed — focused file 15/15, full serial suite 8 files / 50 tests — after a concurrent IDE vitest run on this repo was cleared. `pnpm build` passed.
 
-Next steps in order: deploy once from a clean committed checkout, verify one live authenticated render of the mirror panel showing Money amounts, then record the deployment ID here.
+Deployment 2026-09-10 ~14:15 local: commit `027eb65` (feature `6e6213b` plus docs) deployed from a clean `git archive HEAD` checkout to Vercel project `cr8w-dash-vfin`. Deployment URL `cr8w-dash-vfin-hfmm10zht-monnylog.vercel.app`, status Ready, production alias `https://www.cr8w.com`. Live checks: homepage HTTP 200 in 0.27 s; unauthenticated `/api/dashboard-sync` HTTP 401 (fail-closed, expected); deployed `ThisWeekPage-Zd-PgvrY.js` chunk contains the new registry-driven code (marker strings `notionSources`, `maximumFractionDigits`, `tabular-nums` present; function names minified). One stray deployment `cr8w-deploy-in1gb6eo9-monnylog.vercel.app` was created in a new unlinked Vercel project `cr8w-deploy` when the archive was first deployed without the `.vercel/project.json` link; it is not aliased to production and can be ignored or deleted in the Vercel dashboard.
+
+Remaining: one authenticated visual pass on the mirror panel confirming Money amounts render under the sample records (needs a logged-in browser session). The two `[DEV SAMPLE]` Money pages remain the numeric regression fixture until a separate deletion decision.
 
 ## Prior state
 
