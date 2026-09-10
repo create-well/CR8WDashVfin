@@ -5,15 +5,15 @@
 - Repository: `create-well/CR8WDashVfin`
 - Production role: deployed source for `cr8w.com`, confirmed by project owner on 2026-09-10.
 - Current branch: `feat/notion-freshness-contract`
-- Base commit before this branch: `0d754cf0`
-- Main is behind `origin/main` by two commits at handoff time.
-- Working tree already contained user changes before this task. Do not restore, delete, or commit them incidentally.
-- Notion workspace: `co-monny`, accessed through configured connector.
+- Freshness commit: `579f99a`
+- Main was behind `origin/main` by two commits at handoff time.
+- The working tree contained user changes before this task. They remain uncommitted and untouched.
+- Notion workspace: `co-monny`, accessed through the configured connector.
 - Notion owns operational truth. Supabase is the read-only mirror plus auth, calendar tokens, and intake staging.
 
-## Scope
+## Completed Slice
 
-Implement a small front-end reliability slice: expose Notion source freshness separately from dashboard API fetch freshness. Do not change the Notion schema, operational data, or existing user changes.
+The dashboard now accepts optional `cr8w_notion_sync_meta` metadata from the sync endpoint. It exposes `source`, `mirrorUpdatedAt`, `sourceLastEditedAt`, and `syncRunId` through the typed dashboard payload. The status bar separately reports dashboard fetch time and Notion mirror write time. Missing metadata is shown as unavailable, not fresh. Legacy payloads continue to render.
 
 ## Known Notion Sources
 
@@ -32,14 +32,18 @@ Implement a small front-end reliability slice: expose Notion source freshness se
 
 ## Risks
 
-- Existing code reads and writes Supabase KV collections.
-- Existing `SyncStatusBar` reports client fetch time, not mirror write time.
-- Working tree contains tracked deletions, untracked files, and an environment file. Secrets are not recorded here.
+- Existing code still reads and writes legacy Supabase KV collections. This slice only makes mirror freshness visible; it does not remove operational CRUD.
+- No `cr8w_notion_sync_meta` record is known to exist yet, so the UI will correctly show mirror freshness as unavailable until the sync worker writes it.
+- Existing working tree contains tracked deletions, untracked files, and an environment file. Secrets are not recorded here.
 
-## Validation Baseline
+## Validation
 
-- `pnpm build` was attempted before this branch. Dependency installation stopped because pnpm blocked native build scripts. No source build result was established.
+- `git diff --cached --check`: passed before commit.
+- `./node_modules/.bin/vite build`: passed.
+- Build warnings: existing large application chunk and existing AuthGate dynamic/static import warning.
+- Vitest: unavailable in the current dependency set.
+- TypeScript: compiler exists, but the repository has no `tsconfig*.json`, so no project typecheck is configured.
 
 ## Next Action
 
-Add a backward-compatible freshness contract to the sync payload and status UI, then run focused type/build checks without staging unrelated files.
+Implement the server-side Notion mirror worker or adapter that writes `cr8w_notion_sync_meta` after a durable mirror update. Do not change Notion data or schema. First inspect the canonical deployed sync path and available server secrets.

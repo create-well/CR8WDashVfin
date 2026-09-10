@@ -1,11 +1,12 @@
 # Next Action
 
-Implement a backward-compatible freshness object in the sync response and consume it in `SyncProvider` and `SyncStatusBar`.
+Inspect the deployed sync path and server-side secret names, then implement a bounded Notion-to-Supabase mirror adapter that writes `cr8w_notion_sync_meta` only after durable mirror writes succeed.
 
 Acceptance criteria:
 
-1. Existing payloads without freshness continue to render.
-2. The UI distinguishes dashboard fetch time from mirror write time.
-3. The UI shows a stale warning when mirror freshness is outside the configured threshold.
-4. No operational record mutation is introduced.
-5. Focused checks and `git diff --check` pass.
+1. Notion credentials remain server-side and are never logged.
+2. The adapter uses stable Notion page IDs.
+3. The adapter supports dry-run or preview behavior before writes.
+4. Mirror metadata is written after successful data writes.
+5. The dashboard displays a real Notion mirror timestamp after the first successful run.
+6. Existing user changes remain untouched.
