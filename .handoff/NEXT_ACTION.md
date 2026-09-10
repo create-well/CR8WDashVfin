@@ -1,5 +1,16 @@
 # Next Action
 
+## Atomic RPC graduated — 2026-09-10 ~16:39 local (current state)
+
+Production sync now writes through `public.cr8w_publish_notion_snapshot` (one transaction) with `CR8W_ATOMIC_RPC_ENABLED=true`. Full evidence in `STATE.md` under "Atomic RPC in Production". Operator token was rotated with user approval — read the current value from `.env.local`, not from any older note.
+
+Next actions, in order:
+
+1. Authenticated UI pass on `https://www.cr8w.com`: confirm mirror panel freshness shows the 2026-09-10T23:37Z sync and Money amounts still render.
+2. Prove advisory-lock concurrency (step 12) over `psql` against non-prod `tcqybqimriafewwwdhoa`; needs the non-prod DB password from Supabase Dashboard.
+3. Reconcile Engineering Delivery: it is now mirror-written to KV (`cr8w_notion_mirror_engineeringDelivery`, 1 record) while the read endpoint still capability-gates it. Decide whether the earlier "restricted until grant" stance changes anything about mirror storage.
+4. Watch the next scheduled cron sync (`api/cron/notion-sync.ts` calls `runSync(false)`) — it will use the atomic writer; confirm a clean run in Vercel logs.
+
 ## Registry-Driven Mirror UI — 2026-09-10 (deployed)
 
 Iteration 4 from `NOTION_SOURCES_NEXT.md` is implemented, validated, and deployed. `NotionMirrorSummary.tsx` derives its source list, labels, and filter options from the server-sent `notionSources` registry metadata (key, label, visible, recordCount) via a new exported `sourceCollections(mirrors, sources)` helper, falling back to the static label table only when no metadata has arrived. `ThisWeekPage` passes `data.notionSources` through. Money cards render the numeric `Amount` below the record name through `moneyAmountDisplay(record)` (typed envelope or plain number; no currency until the schema provides one; null-safe for missing or non-finite values).

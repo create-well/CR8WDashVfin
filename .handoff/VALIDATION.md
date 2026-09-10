@@ -68,3 +68,12 @@ Commit `671a955` produced Vercel preview deployment `dpl_F3TzxDx4FX5b3M4VBTy32eQ
 The deployed dashboard endpoint returned HTTP 200 with freshness source `notion`, mirror counts People 13, Flows 3, Moves 4, Content 2, Money 2, and source keys for all five registered sources. The protected metadata endpoint correctly returned HTTP 401 without authorization. The success-path metadata check is deferred because `NOTION_SYNC_OPERATOR_TOKEN` is not available in the sandbox.
 
 The local `vercel` CLI was unavailable, so the existing Vercel Git integration created the branch preview automatically after the GitHub push. The production alias `cr8w.com` was not changed by this branch deployment.
+
+## Authenticated UI Verification — Atomic Sync — 2026-09-10 ~16:45 local (Kimi session via WebBridge)
+
+Verified in the user's logged-in browser after the first atomic-RPC production sync (run `notion-1789083477542-a538f868`):
+
+- NOTION MIRROR panel: "Updated 7m ago"; all six sources "Healthy · synced 7m ago" — People 13, Flows 3, Moves 4, Content 2, Money 2, Engineering Delivery 1. 25 matching records.
+- Money filter: both `[DEV SAMPLE]` records render amounts below the record name — expense `-67.89`, income `123.45`. This closes the long-pending authenticated Money-amount visual pass.
+- Screenshots: `docs/cr8w-thisweek-verify-20260910.png`, `docs/cr8w-mirror-verify-20260910.png`, `docs/cr8w-money-verify-20260910.png`.
+- The two `[DEV SAMPLE]` Money pages remain in place pending the separate deletion decision.

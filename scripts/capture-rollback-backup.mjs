@@ -48,11 +48,13 @@ function unwrap(raw) {
   return raw;
 }
 
-const env = await loadEnv(resolve('.env.production'));
-const url = env.SUPABASE_URL;
-const key = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SECRET_KEY;
-if (!url || !key) fail('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.production');
-if (!url.includes('axntibrdivccycxdwlzk')) fail(`refusing to back up an unexpected project: ${url}`);
+// --from-json <path> reads rows ([{key, value}]) from a local file instead of
+// the REST API. Used when the service role key is unavailable locally and the
+// rows were exported through another trusted channel (e.g. SQL read). The
+// caller is responsible for the file's provenance; keep it gitignored.
+const fromJsonIndex = process.argv.indexOf('--from-json');
+const fromJsonPath = fromJsonIndex === -1 ? null : process.argv[fromJsonIndex + 1];
+if (fromJsonIndex !== -1 && !fromJsonPath) fail('--from-json requires a file path');
 
 const capturedAt = new Date().toISOString();
 const generationId = `backup-${capturedAt.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}`;
@@ -60,12 +62,25 @@ const generationId = `backup-${capturedAt.replace(/[-:]/g, '').replace(/\.\d+Z$/
 const keys = ['people', 'flows', 'moves', 'content', 'money', 'engineeringDelivery'].map(source => `${MIRROR_PREFIX}${source}`);
 keys.push(META_KEY);
 
-const query = keys.map(item => `"${item}"`).join(',');
-const response = await fetch(`${url}/rest/v1/${TABLE}?select=key,value&key=in.(${encodeURIComponent(query)})`, {
-  headers: { apikey: key, Authorization: `Bearer ${key}` },
-});
-if (!response.ok) fail(`Supabase read failed with status ${response.status}`);
-const rows = await response.json();
+let rows;
+if (fromJsonPath) {
+  rows = JSON.parse(await readFile(resolve(fromJsonPath), 'utf8'));
+  if (!Array.isArray(rows)) fail('rows file must be a JSON array of {key, value} objects');
+} else {
+  const env = await loadEnv(resolve('.env.production'));
+  const url = env.SUPABASE_URL;
+  const key = env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SECRET_KEY;
+  if (!url || !key) fail('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env.production');
+  if (!url.includes('axntibrdivccycxdwlzk')) fail(`refusing to back up an unexpected project: ${url}`);
+
+  const query = keys.map(item => `"${item}"`).join(',');
+  const response = await fetch(`${url}/rest/v1/${TABLE}?select=key,value&key=in.(${encodeURIComponent(query)})`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!response.ok) fail(`Supabase read failed with status ${response.status}`);
+  rows = await response.json();
+}
+
 const values = new Map(rows.map(row => [row.key, row.value]));
 for (const item of keys) {
   if (!values.has(item)) fail(`production key is missing: ${item}`);
