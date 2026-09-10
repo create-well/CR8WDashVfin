@@ -111,6 +111,8 @@ Typed mirror normalization now routes through `api/notion-property-envelope.ts`,
 
 The approved protected Notion sync dry-run was attempted without writing mirror data. Vercel confirms `NOTION_SYNC_OPERATOR_TOKEN` and `NOTION_API_KEY` exist as Hidden Production Secrets, but `vercel env pull` supplied `[SENSITIVE]` placeholders because secret values cannot be downloaded. The resulting POST to `/api/notion-sync` returned HTTP 401 Unauthorized, so no source counts were obtained and no real write was attempted. The smallest unblock is an authorized operator providing the existing token through a secure local secret mechanism; do not rotate, print, commit, or paste the token.
 
+The operator token was later provisioned into `.env.local` with a non-empty 50-character value, but the protected dry-run again returned HTTP 401 Unauthorized. The rejected value was removed from `.env.local`; no token value was logged or committed, and `.env.local` remains mode `600`. The next attempt requires the exact existing production token, not a newly generated or guessed value.
+
 ## Public Notion Read-Only Test — 2026-09-10
 
 `.env.local` and `.env.production` were both hardened from mode `644` to mode `600`. The shell environment still has no `NOTION_SYNC_OPERATOR_TOKEN`; `.env.local` contains `NOTION_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` names but no operator token. The sync implementation confirms there is no public bypass: every enabled source is fetched by `POST /api/notion-sync`, which requires an exact Bearer-token match before reading Notion or Supabase metadata. Dry-run mode defaults to true and performs no mirror writes, but it still requires the operator token.
