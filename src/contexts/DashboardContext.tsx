@@ -14,6 +14,7 @@ import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload } from '../types/dashboard';
 import type { SyncFreshness } from '../app/components/api';
 import { useSync } from './SyncProvider';
+import { forwardRetry } from './retry';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -35,7 +36,7 @@ interface DashboardProviderProps {
 }
 
 export function DashboardProvider({ children, onSignOut }: DashboardProviderProps) {
-  const { data: syncedData, syncStatus, lastSynced, retrySync } = useSync();
+  const { data: syncedData, syncStatus, lastSynced, retrySync: requestSync } = useSync();
   // ── Data state ───────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS_MAPPED);
@@ -447,7 +448,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
     // Sync + auth
     retrySync() {
-      retrySync();
+      forwardRetry(requestSync);
     },
     async signOut() {
       await onSignOut();
