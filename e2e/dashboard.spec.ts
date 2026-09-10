@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('shows the dashboard and filters typed Engineering Delivery properties', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Team source, visible here' })).toBeVisible();
   await expect(page.getByLabel('Per-source Notion freshness')).toContainText('Engineering Delivery');
   await expect(page.getByLabel('Per-source Notion freshness')).toContainText('Healthy · synced');
@@ -64,7 +64,7 @@ test('shows the dashboard and filters typed Engineering Delivery properties', as
 test('renders the sign-in gate without an existing session', async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('CR8W Dashboard')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign In →', exact: true })).toBeVisible();
   await context.close();
