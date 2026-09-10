@@ -1,5 +1,21 @@
 # CR8W Dashboard State
 
+## Atomic RPC in Production — 2026-09-10 ~16:39 local (Kimi session)
+
+The flag-gated atomic publication path is live in production. Sequence and evidence:
+
+- Migration `supabase/migrations/20260910_cr8w_atomic_notion_publish.sql` applied to production `axntibrdivccycxdwlzk` via Supabase MCP. Verified: function rejects with intended `P0001` validations; `anon` probe returns `42501`; grants are revoke public/anon/authenticated + grant `service_role`.
+- Non-production validation ran on dedicated project `cr8w-dash-v2-rollback-nonprod` (`tcqybqimriafewwwdhoa`): 12 of 13 plan steps passed. Step 12 (advisory-lock concurrency) is unproven — the Supabase MCP transport kills lock-holding queries; needs `psql` with the non-prod DB password.
+- Live testing caught a real bug: the count check `metadata->>'counts'->>` (text `->>`) aborted with `42883` instead of the intended validation. Fixed in the repo file and redeployed; rejections now return clean `P0001: metadata count mismatch for source ...`. Treat any earlier "count mismatch rejected" evidence from that day as the 42883 abort, not the intended path.
+- `CR8W_ATOMIC_RPC_ENABLED=true` set as Vercel production Config. Rollback = set flag to `false` and redeploy; the sequential writer resumes with no database change.
+- **Operator token rotated with explicit user approval** (user chose rotation over supplying the old token). New 100-character token lives in Vercel production Secret `NOTION_SYNC_OPERATOR_TOKEN` and in `.env.local`. The old token is invalid everywhere, including any copy held by other sessions or scripts. This supersedes the earlier "do not rotate" instruction in this handoff.
+- Deploy from clean `git archive HEAD` checkout, then operator sequence: dry-run clean (25 records, 6 sources, `validationErrors: []`), real sync returned `"writer":"atomic-rpc"` with 7 keys, run ID `notion-1789083477542-a538f868`. Mirror verified at the data layer: meta `syncRunId` matches, `mirrorUpdatedAt` 2026-09-10T23:37:57Z, counts people 13 / moves 4 / flows 3 / content 2 / money 2 / engineeringDelivery 1.
+- Note for reconciliation: the atomic run writes `cr8w_notion_mirror_engineeringDelivery` into the KV mirror (the sequential writer did too). The dashboard read endpoint still capability-gates Engineering Delivery; this is mirror storage, not UI exposure.
+- Non-prod KV table has RLS disabled (Supabase advisory). Acceptable for synthetic fixtures only; do not let real data land there.
+- Remaining: authenticated UI freshness check; step-12 concurrency proof; `backups/live-seq-baseline/` holds the verified baseline manifest used in the rollback-guard test.
+
+`.handoff/LEASE.json` is stale (Manus lease expired 2026-09-10 11:17 local).
+
 ## Confirmed State
 
 - Repository: `create-well/CR8WDashVfin`
