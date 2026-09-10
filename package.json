@@ -7,7 +7,12 @@
     "build": "vite build",
     "dev": "vite",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:contract": "node --test tests/notion-contract.test.ts",
+    "test:atomic-rpc": "node --test tests/verify-atomic-rpc-payload.test.mjs",
+    "test:rollback": "node --test tests/verify-v2-rollback-backup.test.mjs",
+    "test:rollback:integration": "node --test tests/v2-rollback-mitigation.integration.test.mjs",
+    "rollback:verify": "node scripts/rollback-operator-guard.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
