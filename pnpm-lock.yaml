@@ -195,6 +195,9 @@ importers:
       tailwindcss:
         specifier: 4.1.12
         version: 4.1.12
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
       vite:
         specifier: 6.4.3
         version: 6.4.3(@types/node@16.18.11)(jiti@2.7.0)(lightningcss@1.30.1)
@@ -2792,6 +2795,11 @@ packages:
     engines: {node: '>=4.2.0'}
     hasBin: true
 
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   undici@5.28.4:
     resolution: {integrity: sha512-72RFADWFqKmUb2hmmvNODKL3p9hcB6Gt2DOQMis1SEBaV6a4MH8soBvzg+95CYhCKPFedut2JY9bMfrDl9D23g==}
     engines: {node: '>=14.0'}
@@ -5353,6 +5361,8 @@ snapshots:
   tw-animate-css@1.3.8: {}
 
   typescript@4.9.5: {}
+
+  typescript@5.8.3: {}
 
   undici@5.28.4:
     dependencies:

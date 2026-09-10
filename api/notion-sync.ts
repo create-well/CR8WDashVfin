@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ENABLED_NOTION_SOURCES, type NotionSourceConfig, type NotionSourceKey } from './notion-sources.js';
 
 const TABLE = 'kv_store_8dcd9693';
+let syncInFlight = false;
 function database() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
@@ -80,16 +81,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   if (!authorized(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+  if (syncInFlight) { res.status(409).json({ error: 'A Notion sync is already in progress' }); return; }
+  syncInFlight = true;
   try {
     const request = req.body && typeof req.body === 'object' ? req.body : {};
     const dryRun = request.dryRun !== false;
     const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+    const generationId = `generation-${crypto.randomUUID()}`;
     const snapshots: Record<string, any[]> = {};
     let recordsSeen = 0; let latestSourceEdit: string | null = null;
     const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config)] as const));
     for (const [source, records] of sourceResults) { snapshots[source] = records; recordsSeen += records.length; for (const record of records) if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt; }
     const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
-    if (!dryRun) { for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, records); await writeMirror('cr8w_notion_sync_meta', { source: 'notion', mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts }); }
-    res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 });
+    if (!dryRun) {
+      for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, { generationId, records });
+      await writeMirror('cr8w_notion_sync_meta', { source: 'notion', generationId, mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts });
+    }
+    res.json({ ok: true, dryRun, runId, generationId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 });
   } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : 'Notion sync failed' }); }
+  finally { syncInFlight = false; }
 }

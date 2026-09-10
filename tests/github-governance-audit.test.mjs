@@ -2,14 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 test("falls back to repo events when org audit endpoint returns 404", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "gh-audit-test-"));
   const ghPath = join(tempDir, "gh");
   const outputPath = join(tempDir, "governance-audit.jsonl");
-  const scriptPath = "/home/runner/work/CR8WDashVfin/CR8WDashVfin/scripts/github-governance-audit.mjs";
+  const scriptPath = resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/github-governance-audit.mjs");
   const now = new Date().toISOString();
 
   writeFileSync(
