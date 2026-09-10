@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { ENABLED_NOTION_SOURCES } from './notion-sources.js';
+import { ENABLED_NOTION_SOURCES, publicSourceMetadata } from './notion-sources.js';
 
 const TABLE = 'kv_store_8dcd9693';
 const OPERATIONAL_KEYS = [
@@ -20,7 +20,15 @@ function supabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-function parseList(raw: unknown): any[] {
+interface SourceFreshness {
+  status: 'ok' | 'error';
+  recordCount: number;
+  sourceLastEditedAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  error?: string;
+}
+
+function parseList(raw: unknown): unknown[] {
   if (!raw) return [];
   try {
     const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -30,7 +38,7 @@ function parseList(raw: unknown): any[] {
   }
 }
 
-function parseObject(raw: unknown): Record<string, any> {
+function parseObject(raw: unknown): Record<string, unknown> {
   if (!raw) return {};
   try {
     const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -53,9 +61,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const values = Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
     const freshness = parseObject(values.cr8w_notion_sync_meta);
+    const sourceFreshness = parseObject(freshness.sourceFreshness);
     const mirrors = Object.fromEntries(
       ENABLED_NOTION_SOURCES.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`])]),
     );
+    const notionSources = ENABLED_NOTION_SOURCES.map(([source, config]) => publicSourceMetadata(source, config, mirrors[source].length));
 
     res.json({
       tasks: parseList(values.cr8w_tasks),
@@ -73,11 +83,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       wellNotes: parseList(values.cr8w_well_notes),
       calendarEvents: parseList(values.cr8w_calendar_events),
       notionMirrors: mirrors,
+      notionSources,
       freshness: {
         source: freshness.source === 'notion' ? 'notion' : 'unknown',
         mirrorUpdatedAt: typeof freshness.mirrorUpdatedAt === 'string' ? freshness.mirrorUpdatedAt : null,
         sourceLastEditedAt: typeof freshness.sourceLastEditedAt === 'string' ? freshness.sourceLastEditedAt : null,
         syncRunId: typeof freshness.syncRunId === 'string' ? freshness.syncRunId : null,
+        sourceFreshness: Object.fromEntries(Object.entries(sourceFreshness).flatMap(([source, value]) => {
+          const item = parseObject(value);
+          const status = item.status === 'error' ? 'error' : item.status === 'ok' ? 'ok' : null;
+          if (!status) return [];
+          return [[source, {
+            status,
+            recordCount: typeof item.recordCount === 'number' ? item.recordCount : 0,
+            sourceLastEditedAt: typeof item.sourceLastEditedAt === 'string' ? item.sourceLastEditedAt : null,
+            lastSuccessfulSyncAt: typeof item.lastSuccessfulSyncAt === 'string' ? item.lastSuccessfulSyncAt : null,
+            ...(typeof item.error === 'string' ? { error: item.error } : {}),
+          } satisfies SourceFreshness]];
+        })),
       },
     });
   } catch {

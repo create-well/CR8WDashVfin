@@ -27,7 +27,7 @@ const DASHBOARD_SYNC_BASE = BASE.endsWith('/api/server') ? BASE.slice(0, -'/serv
 // Auth header: required by Supabase edge function; Vercel routes ignore it.
 const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
 
-async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
+export async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
   const maxRetries = method === 'GET' ? 1 : 0;
   // Shorter timeout: surface offline state in ≤8 s instead of 30 s.
@@ -54,7 +54,7 @@ async function req<T>(method: string, path: string, body?: unknown, base = BASE)
       if (e?.name === 'AbortError') {
         lastError = new Error(`${method} ${path} → timed out after ${TIMEOUT_MS / 1000}s`);
       }
-      const isNetworkError = e?.name === 'AbortError' || (e instanceof TypeError && e.message === 'Failed to fetch');
+      const isNetworkError = e?.name === 'AbortError' || (e?.name === 'TypeError' && e?.message === 'Failed to fetch');
       if (attempt < maxRetries && isNetworkError) {
         await new Promise(r => setTimeout(r, 2_000));
         continue;
@@ -306,16 +306,34 @@ export interface SyncData {
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
   notionMirrors?: NotionMirrors;
+  notionSources?: NotionSourceMetadata[];
   freshness?: SyncFreshness;
 }
 
+export interface NotionPropertyValue {
+  type: string;
+  value: unknown;
+  displayValue?: string;
+  sensitivity?: 'public' | 'team' | 'restricted';
+}
+
+export interface NotionSourceMetadata {
+  key: string;
+  label: string;
+  visible: boolean;
+  searchable: boolean;
+  sensitivity: 'public' | 'team' | 'restricted';
+  displayFields: string[];
+  recordCount: number;
+}
+
 export interface NotionMirrorRecord {
-  source: 'people' | 'flows' | 'moves' | 'content' | 'money';
+  source: 'people' | 'flows' | 'moves' | 'content' | 'money' | 'engineeringDelivery';
   sourcePageId: string;
   sourceUrl: string | null;
   sourceLastEditedAt: string | null;
   archived: boolean;
-  properties: Record<string, unknown>;
+  properties: Record<string, unknown | NotionPropertyValue>;
 }
 
 export interface NotionMirrors {
@@ -324,6 +342,7 @@ export interface NotionMirrors {
   moves: NotionMirrorRecord[];
   content: NotionMirrorRecord[];
   money: NotionMirrorRecord[];
+  engineeringDelivery: NotionMirrorRecord[];
 }
 
 export interface SyncFreshness {
@@ -331,6 +350,13 @@ export interface SyncFreshness {
   mirrorUpdatedAt: string | null;
   sourceLastEditedAt: string | null;
   syncRunId: string | null;
+  sourceFreshness?: Record<string, {
+    status: 'ok' | 'error';
+    recordCount: number;
+    sourceLastEditedAt: string | null;
+    lastSuccessfulSyncAt: string | null;
+    error?: string;
+  }>;
 }
 
 export interface CalendarEventKV {

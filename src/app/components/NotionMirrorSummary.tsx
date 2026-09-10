@@ -11,22 +11,71 @@ const LABELS: Record<MirrorKey, string> = {
   moves: 'Moves',
   content: 'Content',
   money: 'Money',
+  engineeringDelivery: 'Engineering Delivery',
 };
 
-function recordLabel(record: NotionMirrorRecord): string {
-  const values = Object.values(record.properties ?? {}).filter((value) => {
-    if (typeof value === 'string') return value.trim().length > 0;
-    if (Array.isArray(value)) return value.length > 0;
-    return false;
-  });
-  const first = values[0];
-  if (typeof first === 'string') return first;
-  if (Array.isArray(first)) return first.join(', ');
-  return 'Untitled record';
+export interface TypedPropertyFilterOption {
+  key: string;
+  label: string;
+  values: string[];
+}
+
+export function propertyDisplayValue(value: unknown): string | null {
+  if (typeof value === 'string') return value.trim() || null;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    const items = value.map(propertyDisplayValue).filter((item): item is string => Boolean(item));
+    return items.length > 0 ? items.join(', ') : null;
+  }
+  if (!value || typeof value !== 'object') return null;
+
+  const objectValue = value as Record<string, unknown>;
+  // Typed mirror envelopes retain the Notion property type around the normalized value.
+  if ('value' in objectValue) {
+    const normalized = propertyDisplayValue(objectValue.value);
+    if (normalized) return normalized;
+    return propertyDisplayValue(objectValue.displayValue);
+  }
+  if (typeof objectValue.name === 'string') return objectValue.name.trim() || null;
+  if (typeof objectValue.plain_text === 'string') return objectValue.plain_text.trim() || null;
+  if (typeof objectValue.content === 'string') return objectValue.content.trim() || null;
+  if (typeof objectValue.id === 'string') return objectValue.id;
+
+  // Date values are normalized as { start, end, time_zone } by the sync worker.
+  const start = propertyDisplayValue(objectValue.start);
+  const end = propertyDisplayValue(objectValue.end);
+  if (start) return end && end !== start ? `${start} – ${end}` : start;
+  return null;
+}
+
+export function recordLabel(record: NotionMirrorRecord): string {
+  const first = Object.values(record.properties ?? {}).map(propertyDisplayValue).find(Boolean);
+  return first ?? 'Untitled record';
 }
 
 function recordSearchText(record: NotionMirrorRecord): string {
   return [record.source, record.sourcePageId, recordLabel(record), JSON.stringify(record.properties)].join(' ').toLowerCase();
+}
+
+export function buildPropertyOptions(records: NotionMirrorRecord[]): TypedPropertyFilterOption[] {
+  const values = new Map<string, Set<string>>();
+  records.forEach(record => Object.entries(record.properties ?? {}).forEach(([key, rawValue]) => {
+    const display = propertyDisplayValue(rawValue);
+    if (!display) return;
+    const bucket = values.get(key) ?? new Set<string>();
+    bucket.add(display);
+    values.set(key, bucket);
+  }));
+  return [...values.entries()]
+    .map(([key, entries]) => ({ key, label: key, values: [...entries].sort() }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function matchesTypedFilters(record: NotionMirrorRecord, search: string, property: string, propertyValue: string, indexedSearchText?: string): boolean {
+  const query = search.trim().toLowerCase();
+  if (query && !(indexedSearchText ?? recordSearchText(record)).includes(query)) return false;
+  if (property !== 'all' && propertyDisplayValue(record.properties?.[property]) === null) return false;
+  return propertyValue === 'all' || propertyDisplayValue(record.properties?.[property]) === propertyValue;
 }
 
 function relativeTime(iso: string | null): string {
@@ -49,18 +98,26 @@ interface NotionMirrorSummaryProps {
 export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryProps) {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [search, setSearch] = useState('');
-  const collections = (Object.keys(LABELS) as MirrorKey[]).map((key) => ({
+  const [property, setProperty] = useState('all');
+  const [propertyValue, setPropertyValue] = useState('all');
+  const collections = useMemo(() => (Object.keys(LABELS) as MirrorKey[]).map((key) => ({
     key,
     label: LABELS[key],
     records: mirrors[key] ?? [],
-  }));
+  })), [mirrors.people, mirrors.flows, mirrors.moves, mirrors.content, mirrors.money, mirrors.engineeringDelivery]);
+  const indexedRecords = useMemo(() => collections.flatMap(({ key, label, records }) => records.map(record => ({
+    key,
+    label,
+    record,
+    searchText: recordSearchText(record),
+  }))), [collections]);
+  const propertyOptions = useMemo(() => buildPropertyOptions(collections.flatMap(collection => collection.records)), [collections]);
   const filteredRecords = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return collections
+    return indexedRecords
       .filter(({ key }) => filter === 'all' || filter === key)
-      .flatMap(({ key, label, records }) => records.map((record) => ({ key, label, record })))
-      .filter(({ record }) => !query || recordSearchText(record).includes(query));
-  }, [collections, filter, search]);
+      .filter(({ record, searchText }) => matchesTypedFilters(record, query, property, propertyValue, searchText));
+  }, [filter, indexedRecords, property, propertyValue, search]);
 
   return (
     <section
@@ -106,21 +163,26 @@ export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryP
           <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', border: 0 }}>Search synchronized records</span>
           <input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search people, flows, moves…"
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search typed properties…"
             type="search"
             style={{ boxSizing: 'border-box', width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}
           />
         </label>
-        <select
-          value={filter}
-          onChange={(event) => setFilter(event.target.value as FilterKey)}
-          aria-label="Filter synchronized records by source"
-          style={{ minWidth: 130, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}
-        >
+        <select value={filter} onChange={event => setFilter(event.target.value as FilterKey)} aria-label="Filter synchronized records by source" style={{ minWidth: 130, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}>
           <option value="all">All sources</option>
-          {(Object.keys(LABELS) as MirrorKey[]).map((key) => <option key={key} value={key}>{LABELS[key]}</option>)}
+          {(Object.keys(LABELS) as MirrorKey[]).map(key => <option key={key} value={key}>{LABELS[key]}</option>)}
         </select>
+        <select value={property} onChange={event => { setProperty(event.target.value); setPropertyValue('all'); }} aria-label="Filter synchronized records by property" style={{ minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}>
+          <option value="all">All properties</option>
+          {propertyOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+        </select>
+        {property !== 'all' && (
+          <select value={propertyValue} onChange={event => setPropertyValue(event.target.value)} aria-label={`Filter ${property} values`} style={{ minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-soft, rgba(196,164,132,0.2))', background: 'rgba(255,255,255,0.45)', color: 'inherit', font: 'inherit', fontSize: '0.76rem' }}>
+            <option value="all">All {property}</option>
+            {(propertyOptions.find(option => option.key === property)?.values ?? []).map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
+        )}
       </div>
 
       {filteredRecords.length > 0 ? (
@@ -145,7 +207,7 @@ export function NotionMirrorSummary({ mirrors, freshness }: NotionMirrorSummaryP
         </>
       ) : (
         <div style={{ marginTop: 14, fontSize: '0.78rem', color: 'var(--text-muted, #6B5F7A)' }}>
-          {search || filter !== 'all' ? 'No synchronized records match this search.' : 'The mirror is connected. No records are available to show yet.'}
+          {search || filter !== 'all' || property !== 'all' || propertyValue !== 'all' ? 'No synchronized records match these filters.' : 'The mirror is connected. No records are available to show yet.'}
         </div>
       )}
     </section>
