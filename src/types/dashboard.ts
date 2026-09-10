@@ -4,7 +4,7 @@ import type {
   CoFlowDate, CoFlowCheckin, WellNote,
 } from '../app/components/api';
 import type { SyncFreshness } from '../app/components/api';
-import type { NotionMirrors } from '../app/components/api';
+import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
@@ -33,6 +33,7 @@ export interface DashboardPayload {
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   notionMirrors: NotionMirrors;
+  notionSources: NotionSourceMetadata[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
   freshness: SyncFreshness;
