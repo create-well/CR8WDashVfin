@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { DashboardProvider } from '../contexts/DashboardContext';
-import { AuthGate, isAuthenticated, getStoredProfile } from './components/AuthGate';
+import { AuthGate, isAuthenticated, getStoredProfile, signOut } from './components/AuthGate';
 import { useThemeInit } from './components/ThemeProvider';
 import { GCAL_CLIENT_ID } from './components/data';
 
@@ -123,7 +123,6 @@ export default function App() {
   }
 
   async function handleSignOut() {
-    const { signOut } = await import('./components/AuthGate');
     await signOut();
     setAuthed(false);
     window.location.reload();
