@@ -4,9 +4,9 @@ import { ENABLED_NOTION_SOURCES, type NotionSourceConfig, type NotionSourceKey }
 const TABLE = 'kv_store_8dcd9693';
 
 export type NotionSyncResult = {
-  runId: string; dryRun: boolean; writes: number; created: number; updated: number;
+  runId: string; generationId: string; dryRun: boolean; writes: number; created: number; updated: number;
   skipped: number; conflicts: number; errors: number; sourceCounts: Record<string, number>;
-  mirrorUpdatedAt: string | null; freshnessSource: 'notion' | 'unknown';
+  recordsSeen: number; latestSourceEdit: string | null; mirrorUpdatedAt: string | null; freshnessSource: 'notion' | 'unknown';
 };
 
 function database() {
@@ -36,22 +36,9 @@ function primitiveValue(property: any): unknown {
   if (property.type === 'rollup') return value?.type === 'array' ? value.array : value?.[value.type] ?? null;
   return value ?? null;
 }
-
-function displayValue(value: unknown): string {
-  if (value == null) return '';
-  if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(', ');
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-
-function propertyValue(property: any, config: NotionSourceConfig): unknown {
-  const value = primitiveValue(property);
-  return config.typedProperties ? { type: property?.type ?? 'unknown', value, displayValue: displayValue(value), sensitivity: config.sensitivity } : value;
-}
-
-function normalize(page: any, source: NotionSourceKey, config: NotionSourceConfig) {
-  return { source, sourcePageId: page.id, sourceUrl: page.url ?? null, sourceLastEditedAt: page.last_edited_time ?? null, archived: Boolean(page.archived), properties: Object.fromEntries(Object.entries(page.properties ?? {}).map(([name, value]) => [name, propertyValue(value, config)])) };
-}
+function displayValue(value: unknown): string { if (value == null) return ''; if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(', '); if (typeof value === 'object') return JSON.stringify(value); return String(value); }
+function propertyValue(property: any, config: NotionSourceConfig): unknown { const value = primitiveValue(property); return config.typedProperties ? { type: property?.type ?? 'unknown', value, displayValue: displayValue(value), sensitivity: config.sensitivity } : value; }
+function normalize(page: any, source: NotionSourceKey, config: NotionSourceConfig) { return { source, sourcePageId: page.id, sourceUrl: page.url ?? null, sourceLastEditedAt: page.last_edited_time ?? null, archived: Boolean(page.archived), properties: Object.fromEntries(Object.entries(page.properties ?? {}).map(([name, value]) => [name, propertyValue(value, config)])) }; }
 
 async function notion(path: string, options: RequestInit = {}) {
   const token = process.env.NOTION_API_KEY;
@@ -60,7 +47,6 @@ async function notion(path: string, options: RequestInit = {}) {
   if (!response.ok) throw new Error(`Notion request failed with status ${response.status}`);
   return response.json();
 }
-
 async function fetchSource(source: NotionSourceKey, config: NotionSourceConfig) {
   const records: any[] = [];
   let cursor: string | undefined;
@@ -74,15 +60,19 @@ async function fetchSource(source: NotionSourceKey, config: NotionSourceConfig) 
 
 export async function runNotionSync({ dryRun }: { dryRun: boolean }): Promise<NotionSyncResult> {
   const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const generationId = `generation-${crypto.randomUUID()}`;
   const snapshots: Record<string, any[]> = {};
+  let recordsSeen = 0;
+  let latestSourceEdit: string | null = null;
   const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config)] as const));
-  for (const [source, records] of sourceResults) snapshots[source] = records;
+  for (const [source, records] of sourceResults) { snapshots[source] = records; recordsSeen += records.length; for (const record of records) if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt; }
   const sourceCounts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
+  const mirrorUpdatedAt = dryRun ? null : new Date().toISOString();
   if (!dryRun) {
-    for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, records);
-    await writeMirror('cr8w_notion_sync_meta', { source: 'notion', mirrorUpdatedAt: new Date().toISOString(), syncRunId: runId, counts: sourceCounts });
+    for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, { generationId, records });
+    await writeMirror('cr8w_notion_sync_meta', { source: 'notion', generationId, mirrorUpdatedAt, sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts: sourceCounts });
   }
-  return { runId, dryRun, writes: dryRun ? 0 : Object.keys(snapshots).length + 1, created: 0, updated: dryRun ? 0 : Object.keys(snapshots).length, skipped: 0, conflicts: 0, errors: 0, sourceCounts, mirrorUpdatedAt: dryRun ? null : new Date().toISOString(), freshnessSource: dryRun ? 'unknown' : 'notion' };
+  return { runId, generationId, dryRun, writes: dryRun ? 0 : Object.keys(snapshots).length + 1, created: 0, updated: dryRun ? 0 : Object.keys(snapshots).length, skipped: 0, conflicts: 0, errors: 0, sourceCounts, recordsSeen, latestSourceEdit, mirrorUpdatedAt, freshnessSource: dryRun ? 'unknown' : 'notion' };
 }
 
 export { primitiveValue };

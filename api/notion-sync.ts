@@ -37,6 +37,11 @@ function summary(result: NotionSyncResult) {
   return { runId: result.runId, dryRun: result.dryRun, writes: result.writes, created: result.created, updated: result.updated, skipped: result.skipped, conflicts: result.conflicts, errors: result.errors, sourceCounts: result.sourceCounts, mirrorUpdatedAt: result.mirrorUpdatedAt, freshnessSource: result.freshnessSource };
 }
 
+export async function runSync(dryRun: boolean) {
+  const result = await runNotionSync({ dryRun });
+  return { dryRun: result.dryRun, runId: result.runId, generationId: result.generationId, recordsSeen: result.recordsSeen, counts: result.sourceCounts, latestSourceEdit: result.latestSourceEdit, writes: result.writes };
+}
+
 export default async function notionSync(req: VercelRequest, res: VercelResponse): Promise<void> {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Authorization');

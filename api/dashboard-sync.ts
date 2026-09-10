@@ -20,11 +20,16 @@ function supabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-function parseList(raw: unknown): any[] {
+function parseList(raw: unknown, generation?: string): any[] {
   if (!raw) return [];
   try {
     const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return Array.isArray(value) ? value : [];
+    if (Array.isArray(value)) return value;
+    if (value && typeof value === 'object' && Array.isArray(value.records)) {
+      if (generation && value.generationId !== generation) throw new Error('Inconsistent Notion mirror generation');
+      return value.records;
+    }
+    return [];
   } catch {
     return [];
   }
@@ -53,8 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const values = Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
     const freshness = parseObject(values.cr8w_notion_sync_meta);
+    const generation = typeof freshness.generationId === 'string' ? freshness.generationId : undefined;
     const mirrors = Object.fromEntries(
-      ENABLED_NOTION_SOURCES.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`])]),
+      ENABLED_NOTION_SOURCES.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`], generation)]),
     );
     const notionSources = ENABLED_NOTION_SOURCES.map(([key, config]) => ({
       key,
@@ -88,6 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mirrorUpdatedAt: typeof freshness.mirrorUpdatedAt === 'string' ? freshness.mirrorUpdatedAt : null,
         sourceLastEditedAt: typeof freshness.sourceLastEditedAt === 'string' ? freshness.sourceLastEditedAt : null,
         syncRunId: typeof freshness.syncRunId === 'string' ? freshness.syncRunId : null,
+        generationId: generation ?? null,
       },
     });
   } catch {
