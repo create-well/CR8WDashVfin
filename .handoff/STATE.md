@@ -87,3 +87,11 @@ The Money mirror contains numeric Amount values `123.45` and `-67.89`, stable No
 ## Existing Unrelated Working-Tree Changes
 
 The following remain unstaged and untouched: `pnpm-workspace.yaml`, legacy import deletions, `.env.production`, and unrelated untracked source/test files.
+
+## Typed Envelope and Authorization Review — 2026-09-10
+
+The typed-property plan remains the correct next implementation boundary: replace the open `type: string` envelope with a closed Notion property-type union, preserve source-specific value types, add `sourceProperty` provenance, and reserve non-fatal `warnings` for unsupported types or invalid normalization. Required tests cover number, checkbox, select, status, multi-select, date ranges, relations, URLs, unique IDs, formulas, rollups, unsupported types, and invalid numbers.
+
+The approved Engineering Delivery source family is the existing CR8W Engineering Delivery data source `eb498877-a74f-4abe-bac3-8d1dfbc62db8`, not the separate System Admin master sources. It remains restricted. Before any dashboard exposure or real mirror write, the server must validate a Supabase access token, confirm an active subject, and require a server-managed `engineeringDelivery` read grant or role. No such grant was created in this pass.
+
+The approved protected Notion sync dry-run was attempted without writing mirror data. Vercel confirms `NOTION_SYNC_OPERATOR_TOKEN` and `NOTION_API_KEY` exist as Hidden Production Secrets, but `vercel env pull` supplied `[SENSITIVE]` placeholders because secret values cannot be downloaded. The resulting POST to `/api/notion-sync` returned HTTP 401 Unauthorized, so no source counts were obtained and no real write was attempted. The smallest unblock is an authorized operator providing the existing token through a secure local secret mechanism; do not rotate, print, commit, or paste the token.

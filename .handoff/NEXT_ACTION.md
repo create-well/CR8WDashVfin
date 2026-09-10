@@ -8,7 +8,7 @@ Current status: clean production deployment, HTTP route/API checks, deployed-ass
 
 After UI testing, delete only the two labeled sample pages if they are no longer needed. Keep the source registry and typed property normalization.
 
-Next development cycle: first resolve the mirror freshness gap by running an approved protected Notion sync dry-run and recording source counts before any real mirror write. Next, review the typed property envelope plan and obtain the source-family authorization decision for Engineering Delivery before enabling it. Keep the two `[DEV SAMPLE]` Money pages until the authenticated UI review is complete.
+Next development cycle: first obtain the existing Notion sync operator token through an approved secure local channel and rerun the protected dry-run; the current attempt returned 401 because Vercel will not download Hidden Secret values. Record per-source counts before any real mirror write. Then implement the closed typed-property envelope and its normalization tests. Engineering Delivery source identity is resolved to the existing CR8W source, but server-managed restricted-source grants and fail-closed authorization enforcement remain prerequisites before exposure or mirror write. Keep the two `[DEV SAMPLE]` Money pages until authenticated UI review is complete.
 
 Decision on samples: keep both pages for now because authenticated visual verification remains blocked and the records are the current numeric Money regression fixture. The typed-envelope plan is documented in `docs/TYPED_PROPERTY_ENVELOPE_PLAN.md`; Engineering Delivery is the next candidate, pending a source-family authorization decision.
 
