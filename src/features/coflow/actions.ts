@@ -2,8 +2,8 @@
  * CoFlow actions — extracted from DashboardContext.
  * Manages CoFlow dates (behind h0es doors) and check-ins with optimistic updates.
  */
-import * as api from '../app/components/api';
-import type { CoFlowDate, CoFlowCheckin } from '../app/components/api';
+import * as api from '../../app/components/api';
+import type { CoFlowDate, CoFlowCheckin } from '../../app/components/api';
 
 export interface CoFlowActions {
   addCoFlowDate: (d: Omit<CoFlowDate, 'id' | 'created_at'>) => Promise<void>;
