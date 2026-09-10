@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { summarizeSourceResults, type MirrorRecord, type SourceFreshness, type SourceSyncResult } from '../notion-sync';
 
-function record(source: MirrorRecord['source'], id: string, editedAt: string): MirrorRecord {
+function record(source: MirrorRecord['source'], id: string, editedAt: string | null): MirrorRecord {
   return {
     source,
     sourcePageId: id,
@@ -65,5 +65,47 @@ describe('Notion source-isolation reducer', () => {
     expect(summary.latestSourceEdit).toBe('2026-09-09T11:00:00.000Z');
     expect(summary.sourceFreshness.people.status).toBe('error');
     expect(summary.sourceFreshness.money.status).toBe('error');
+  });
+
+  it('creates a complete unavailable baseline when a source fails without prior metadata', () => {
+    const summary = summarizeSourceResults([
+      { source: 'flows', records: null, error: 'Notion request failed with status 503' },
+    ], {}, '2026-09-10T12:05:00.000Z');
+
+    expect(summary.counts).toEqual({ flows: 0 });
+    expect(summary.recordsSeen).toBe(0);
+    expect(summary.latestSourceEdit).toBeNull();
+    expect(summary.sourceFreshness.flows).toEqual({
+      status: 'error',
+      recordCount: 0,
+      sourceLastEditedAt: null,
+      lastSuccessfulSyncAt: null,
+      error: 'Notion request failed with status 503',
+    });
+  });
+
+  it('marks an empty successful source healthy without inventing an edit timestamp', () => {
+    const summary = summarizeSourceResults([
+      { source: 'content', records: [], error: null },
+    ], {}, '2026-09-10T12:05:00.000Z');
+
+    expect(summary.successful.map(result => result.source)).toEqual(['content']);
+    expect(summary.failed).toHaveLength(0);
+    expect(summary.sourceFreshness.content).toEqual({
+      status: 'ok',
+      recordCount: 0,
+      sourceLastEditedAt: null,
+      lastSuccessfulSyncAt: '2026-09-10T12:05:00.000Z',
+    });
+  });
+
+  it('keeps the aggregate edit time null when successful records lack edit timestamps', () => {
+    const summary = summarizeSourceResults([
+      { source: 'moves', records: [record('moves', 'move-1', null)], error: null },
+    ], {}, '2026-09-10T12:05:00.000Z');
+
+    expect(summary.recordsSeen).toBe(1);
+    expect(summary.latestSourceEdit).toBeNull();
+    expect(summary.sourceFreshness.moves.sourceLastEditedAt).toBeNull();
   });
 });
