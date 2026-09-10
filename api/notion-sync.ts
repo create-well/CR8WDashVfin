@@ -8,7 +8,10 @@ type WriteRequest = { dryRun: false };
 
 function bearerToken(req: VercelRequest): string | null {
   const value = req.headers.authorization;
-  return typeof value === 'string' ? value.match(/^Bearer\s+(.+)$/i)?.[1] ?? null : null;
+  if (typeof value !== 'string') return null;
+  const scheme = value.slice(0, 6).toLowerCase();
+  if (scheme !== 'bearer' || value.length <= 7 || value.charCodeAt(6) !== 32) return null;
+  return value.slice(7).trim() || null;
 }
 
 function tokensMatch(received: string | null, expected: string): boolean {
