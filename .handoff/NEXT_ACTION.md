@@ -7,7 +7,7 @@ Production sync now writes through `public.cr8w_publish_notion_snapshot` (one tr
 Next actions, in order:
 
 1. ~~Authenticated UI pass~~ — DONE 2026-09-10 ~16:45 local (see VALIDATION.md): mirror panel fresh, Money amounts render, screenshots in `docs/`.
-2. Prove advisory-lock concurrency (step 12) over `psql` against non-prod `tcqybqimriafewwwdhoa`; needs the non-prod DB password from Supabase Dashboard. Still the only unproven plan step.
+2. ~~Prove advisory-lock concurrency (step 12)~~ — DONE 2026-09-10 ~16:50 local over `psql` against non-prod: concurrent publish blocked ~5 s on the advisory lock, then committed; 407 ms uncontended control. All 13 plan steps now passed. Non-prod DB URL stored as `SUPABASE_NONPROD_DB_URL` in `.env.local`.
 3. Reconcile Engineering Delivery: it is now mirror-written to KV (`cr8w_notion_mirror_engineeringDelivery`, 1 record) while the read endpoint still capability-gates it. Decide whether the earlier "restricted until grant" stance changes anything about mirror storage. Team decision, not an operator action.
 4. ~~Watch the next scheduled cron sync~~ — DONE 2026-09-10 ~16:55 local: the 23:45Z cron tick wrote through the atomic RPC (`syncRunId notion-1789083936188-db002140`, all values native jsonb, counts match). Post-atomic rollback baseline at `.backups/backup-20260910T234305Z`, gate PASS. See VALIDATION.md.
 
