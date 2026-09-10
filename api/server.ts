@@ -131,10 +131,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(res);
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  // Resolve path: /api/server/sync → "sync"; /api/server/tasks/123 → "tasks/123"
-  const rawPath = Array.isArray(req.query.path)
-    ? req.query.path.join('/')
-    : (req.query.path as string) ?? '';
+  // Resolve path for both catch-all and exact-function Vercel routing.
+  const queryPath = Array.isArray(req.query.path) ? req.query.path.join('/') : (req.query.path as string) ?? '';
+  const urlPath = (req.url ?? '').split('?')[0].replace(/^\/api\/server\/?/, '');
+  const rawPath = queryPath || urlPath;
 
   const segments = rawPath.split('/').filter(Boolean);
   const [resource, id, sub, subId] = segments;
