@@ -37,8 +37,9 @@ export function SyncStatusBar() {
   const mirrorLabel = mirrorUpdatedAt
     ? `Notion mirror written ${relativeTime(mirrorUpdatedAt)}`
     : 'Notion mirror freshness unavailable';
+  const partialSourceFailure = Object.values(freshness.sourceFreshness ?? {}).some(source => source.status === 'error');
 
-  if (syncStatus === 'fresh' && !mirrorIsStale && freshness.source === 'notion' &&
+  if (syncStatus === 'fresh' && !mirrorIsStale && !partialSourceFailure && freshness.source === 'notion' &&
       lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
     return null;
   }
@@ -74,7 +75,8 @@ export function SyncStatusBar() {
       <span>{fetchLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
       <span aria-label="Notion mirror freshness"> · {mirrorLabel}</span>
       {mirrorIsStale && <span> · Mirror stale</span>}
-      {(syncStatus === 'failed' || syncStatus === 'stale' || mirrorIsStale) && (
+      {partialSourceFailure && <span> · Some sources failed; showing last good data</span>}
+      {(syncStatus === 'failed' || syncStatus === 'stale' || mirrorIsStale || partialSourceFailure) && (
         <button
           onClick={() => actions.retrySync()}
           style={{

@@ -32,7 +32,7 @@ interface NotionQueryResponse {
   next_cursor?: string | null;
 }
 
-interface MirrorRecord {
+export interface MirrorRecord {
   source: NotionSourceKey;
   sourcePageId: string;
   sourceUrl: string | null;
@@ -54,6 +54,43 @@ export interface SourceFreshness {
   sourceLastEditedAt: string | null;
   lastSuccessfulSyncAt: string | null;
   error?: string;
+}
+
+export interface SourceSyncResult {
+  source: NotionSourceKey;
+  records: MirrorRecord[] | null;
+  error: string | null;
+}
+
+export interface SourceSyncSummary {
+  sourceFreshness: Record<string, SourceFreshness>;
+  counts: Record<string, number>;
+  recordsSeen: number;
+  latestSourceEdit: string | null;
+  successful: SourceSyncResult[];
+  failed: SourceSyncResult[];
+}
+
+export function summarizeSourceResults(
+  results: SourceSyncResult[],
+  previousFreshness: Record<string, SourceFreshness>,
+  completedAt: string,
+): SourceSyncSummary {
+  const sourceFreshness: Record<string, SourceFreshness> = { ...previousFreshness };
+  for (const result of results) {
+    if (result.records) {
+      const latest = result.records.reduce<string | null>((latestEdit, record) => record.sourceLastEditedAt && (!latestEdit || record.sourceLastEditedAt > latestEdit) ? record.sourceLastEditedAt : latestEdit, null);
+      sourceFreshness[result.source] = { status: 'ok', recordCount: result.records.length, sourceLastEditedAt: latest, lastSuccessfulSyncAt: completedAt };
+    } else {
+      sourceFreshness[result.source] = { ...(previousFreshness[result.source] ?? { recordCount: 0, sourceLastEditedAt: null, lastSuccessfulSyncAt: null }), status: 'error', ...(result.error ? { error: result.error } : {}) };
+    }
+  }
+  const successful = results.filter(result => result.records !== null);
+  const failed = results.filter(result => result.error);
+  const recordsSeen = successful.reduce((total, result) => total + (result.records?.length ?? 0), 0);
+  const counts = Object.fromEntries(results.map(result => [result.source, result.records?.length ?? previousFreshness[result.source]?.recordCount ?? 0]));
+  const latestSourceEdit = Object.values(sourceFreshness).reduce<string | null>((latest, source) => source.sourceLastEditedAt && (!latest || source.sourceLastEditedAt > latest) ? source.sourceLastEditedAt : latest, null);
+  return { sourceFreshness, counts, recordsSeen, latestSourceEdit, successful, failed };
 }
 
 function database(): Database {
@@ -180,29 +217,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const db = database();
     const previousMeta = await readMirrorMeta(db);
-    const snapshots: Partial<Record<NotionSourceKey, MirrorRecord[]>> = {};
-    const sourceFreshness: Record<string, SourceFreshness> = { ...previousMeta.sourceFreshness };
     const completedAt = new Date().toISOString();
 
-    const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => {
+    const sourceResults: SourceSyncResult[] = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => {
       try {
         const records = await fetchSource(source, config);
-        snapshots[source] = records;
-        const latest = records.reduce<string | null>((latestEdit, record) => record.sourceLastEditedAt && (!latestEdit || record.sourceLastEditedAt > latestEdit) ? record.sourceLastEditedAt : latestEdit, null);
-        sourceFreshness[source] = { status: 'ok', recordCount: records.length, sourceLastEditedAt: latest, lastSuccessfulSyncAt: completedAt };
         return { source, records, error: null };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Source sync failed';
-        sourceFreshness[source] = { ...(previousMeta.sourceFreshness[source] ?? { recordCount: 0, sourceLastEditedAt: null, lastSuccessfulSyncAt: null }), status: 'error', error: message };
         return { source, records: null, error: message };
       }
     }));
 
-    const successful = sourceResults.filter(result => result.records !== null);
-    const failed = sourceResults.filter(result => result.error);
-    const recordsSeen = successful.reduce((total, result) => total + (result.records?.length ?? 0), 0);
-    const counts = Object.fromEntries(sourceResults.map(result => [result.source, result.records?.length ?? previousMeta.sourceFreshness[result.source]?.recordCount ?? 0]));
-    const latestSourceEdit = Object.values(sourceFreshness).reduce<string | null>((latest, source) => source.sourceLastEditedAt && (!latest || source.sourceLastEditedAt > latest) ? source.sourceLastEditedAt : latest, null);
+    const { sourceFreshness, successful, failed, recordsSeen, counts, latestSourceEdit } = summarizeSourceResults(sourceResults, previousMeta.sourceFreshness, completedAt);
 
     if (!dryRun) {
       for (const result of successful) await writeMirror(db, `cr8w_notion_mirror_${result.source}`, result.records);
