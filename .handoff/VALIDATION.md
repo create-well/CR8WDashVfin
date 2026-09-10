@@ -46,3 +46,12 @@ The typed property slice now includes the protected `api/notion-source-metadata.
 The build retains the pre-existing large-chunk warning: the main JavaScript chunk is approximately 951 kB minified. Defer code-splitting until measured active-use performance shows a problem.
 
 Do not claim this slice is production-ready until the pushed commit is deployed, the protected metadata endpoint is checked, `GET /api/dashboard-sync` confirms source metadata and Money count 2, and the Money card visual check passes.
+
+
+## Preview deployment verification
+
+Commit `671a955` produced Vercel preview deployment `dpl_F3TzxDx4FX5b3M4VBTy32eQE19gp` at `https://cr8w-dash-vfin-rjibk3olb-monnylog.vercel.app` with state `READY`.
+
+The deployed dashboard endpoint returned HTTP 200 with freshness source `notion`, mirror counts People 13, Flows 3, Moves 4, Content 2, Money 2, and source keys for all five registered sources. The protected metadata endpoint correctly returned HTTP 401 without authorization. The success-path metadata check is deferred because `NOTION_SYNC_OPERATOR_TOKEN` is not available in the sandbox.
+
+The local `vercel` CLI was unavailable, so the existing Vercel Git integration created the branch preview automatically after the GitHub push. The production alias `cr8w.com` was not changed by this branch deployment.
