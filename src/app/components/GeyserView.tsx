@@ -11,6 +11,10 @@ import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
 import { StationsList } from '../../features/geyser/components/StationsList';
 import { TaskList } from '../../features/geyser/components/TaskList';
+import { ForumSection } from '../../features/geyser/components/ForumSection';
+import { GeyserTabs } from '../../features/geyser/components/GeyserTabs';
+import { GuestJourney } from '../../features/geyser/components/GuestJourney';
+import { TaskOverview } from '../../features/geyser/components/TaskOverview';
 
 type GeyserTab = 'overview' | 'journey' | 'stations' | 'tasks' | 'forum';
 
@@ -682,24 +686,35 @@ export function GeyserView({
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="geyser-tabs">
-        {tabs.map(t => (
-          <button
-            key={t.key}
-            className={`geyser-tab${activeTab === t.key ? ' active' : ''}`}
-            onClick={() => setActiveTab(t.key)}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
+      <GeyserTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {activeTab === 'overview' && renderOverview()}
-      {activeTab === 'journey' && renderJourney()}
+      {activeTab === 'overview' && (
+        <TaskOverview
+          onNavigate={onNavigate}
+          announcements={announcements}
+          onDismissAnnouncement={onDismissAnnouncement}
+          onAddAnnouncement={onAddAnnouncement}
+          stations={stations}
+          actionItems={actionItems}
+          setActiveTab={setActiveTab}
+          wellNotes={wellNotes}
+          onAddNote={onAddNote}
+        />
+      )}
+      {activeTab === 'journey' && <GuestJourney />}
       {activeTab === 'stations' && renderStations()}
       {activeTab === 'tasks' && renderTasks()}
-      {activeTab === 'forum' && renderForum()}
+      {activeTab === 'forum' && (
+        <ForumSection
+          forum={forum}
+          forumReplies={forumReplies}
+          onAddForumPost={onAddForumPost}
+          onUpdateForumPost={onUpdateForumPost}
+          onDeleteForumPost={onDeleteForumPost}
+          onAddForumReply={onAddForumReply}
+          onDeleteForumReply={onDeleteForumReply}
+        />
+      )}
     </div>
   );
 }
