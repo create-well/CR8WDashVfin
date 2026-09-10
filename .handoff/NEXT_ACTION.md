@@ -1,10 +1,10 @@
 # Next Action
 
-Open `https://www.cr8w.com/moves`, select the Moves and Stations tabs, and confirm the live task inline edit and station status controls render for the authenticated team session.
+Deploy commit `e3baa57` from a clean archive, then verify `https://www.cr8w.com/moves` in the authenticated team session across Overview, Journey, Stations, Moves, and Forum tabs.
 
 The latest production deployment is `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU`; the live homepage returned HTTP 200 and `/api/dashboard-sync` returned HTTP 200 with Notion freshness metadata and 6 tasks / 6 stations.
 
-Current status: API/runtime verification is complete. Authenticated visual verification is **NOT NOW** because My Browser navigation succeeded but screenshot, DOM view, and console artifact collection failed at the Chrome-extension layer.
+Current status: isolated local browser verification and full Vitest validation are complete. Authenticated production visual verification remains **NOT NOW** because prior My Browser screenshot, DOM view, and console artifact collection failed at the Chrome-extension layer.
 
 After UI testing, delete only the two labeled sample pages if they are no longer needed. Keep the source registry and typed property normalization.
 
