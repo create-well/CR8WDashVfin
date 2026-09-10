@@ -20,13 +20,13 @@ The metadata-driven source registry, explicit Checkbox and Number normalization,
 
 ## Geyser Slice Deployment
 
-The Geyser Moves route now mounts the extracted task, station, forum, overview, journey, and tab components while retaining the existing DashboardContext mutation boundary. The task/station production deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` remains Ready; the remaining local mounts are committed in `e3baa57` and are not yet deployed.
+The Geyser Moves route now mounts the extracted task, station, forum, overview, journey, and tab components while retaining the existing DashboardContext mutation boundary. Commit `e3baa57` was deployed from a clean archive as `dpl_EW8yQz1QqjD58XzpEmfdHrEoi385`; Vercel reports `READY` and the production alias is `https://www.cr8w.com`.
 
-Validation completed locally: `pnpm build` passed with 2,141 modules transformed; full Vitest passed with 7 files and 34 tests using one bounded worker; and an isolated clean-checkout Playwright smoke test passed for task inline edit and station status mutation. The remaining Geyser mounts share the same build and full-unit validation.
+Validation completed locally: `pnpm build` passed with 2,141 modules transformed; full Vitest passed with 7 files and 34 tests using one bounded worker; and an isolated clean-checkout Playwright smoke test passed for task inline edit and station status mutation. Production homepage and `/moves` returned HTTP 200, `/api/dashboard-sync` returned HTTP 200 with 6 tasks and 6 stations, and the deployed lazy assets contain Overview, Journey, Stations, Moves, Forum, and Geyser markers.
 
 ## Post-Deployment Verification
 
-- Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated visual inspection is **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, and rejected page DOM/console inspection with a Chrome-extension artifact error.
+- Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated interaction across all tabs remains **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, and rejected page DOM/console inspection with a Chrome-extension artifact error. Static production asset checks confirm all six tab components are deployed; they do not replace authenticated click verification.
 - `GET /api/dashboard-sync` returned HTTP 200 in three direct probes. Total latency was 0.733s, 0.564s, and 0.704s; mean 0.667s; payload size 55,518 bytes. The response contained Notion freshness metadata, 6 tasks, 6 stations, 10 messages, and no forum records.
 - Vercel runtime logs for deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` showed four `/api/dashboard-sync` requests, all HTTP 200, with no recent error or fatal entries. Build logs show the Vite build completed and deployment reached Ready; pre-existing Vercel TypeScript diagnostics for missing Node types and Supabase auth typings were emitted but did not block deployment.
 

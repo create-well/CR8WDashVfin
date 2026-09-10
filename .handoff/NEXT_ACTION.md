@@ -1,10 +1,10 @@
 # Next Action
 
-Deploy commit `e3baa57` from a clean archive, then verify `https://www.cr8w.com/moves` in the authenticated team session across Overview, Journey, Stations, Moves, and Forum tabs.
+Deployment is complete: commit `e3baa57` is Ready as `dpl_EW8yQz1QqjD58XzpEmfdHrEoi385` and aliased to `https://www.cr8w.com`. The remaining action is authenticated browser verification across Overview, Journey, Stations, Moves, and Forum tabs when the My Browser artifact layer is available.
 
 The latest production deployment is `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU`; the live homepage returned HTTP 200 and `/api/dashboard-sync` returned HTTP 200 with Notion freshness metadata and 6 tasks / 6 stations.
 
-Current status: isolated local browser verification and full Vitest validation are complete. Authenticated production visual verification remains **NOT NOW** because prior My Browser screenshot, DOM view, and console artifact collection failed at the Chrome-extension layer.
+Current status: clean production deployment, HTTP route/API checks, and deployed-asset checks are complete. Authenticated production visual verification remains **NOT NOW** because My Browser navigation succeeds but screenshot, DOM view, and console artifact collection fail at the Chrome-extension layer.
 
 After UI testing, delete only the two labeled sample pages if they are no longer needed. Keep the source registry and typed property normalization.
 
