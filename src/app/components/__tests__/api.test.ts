@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { req } from '../api';
+import { getCalendarEvents, req } from '../api';
 
 describe('api client req() helper', () => {
   beforeEach(() => {
@@ -80,5 +80,14 @@ describe('api client req() helper', () => {
     const result = await promise;
     expect(result).toEqual({ retrySuccess: true });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('normalizes a non-array calendar runtime response to an empty list', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ status: 'ok', runtime: 'vercel' }),
+    } as any);
+
+    await expect(getCalendarEvents()).resolves.toEqual([]);
   });
 });

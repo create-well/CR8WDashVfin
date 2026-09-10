@@ -172,7 +172,10 @@ export const getInviteCounts = () => req<InviteCounts>('GET', '/invite-counts');
 export const setInviteCounts = (counts: Omit<InviteCounts, 'updated_at'>) => req<InviteCounts & { ok: boolean }>('POST', '/invite-counts', counts);
 
 // Calendar Events (synced from Google Calendar via KV)
-export const getCalendarEvents = () => req<CalendarEventKV[]>('GET', '/calendar-events');
+export async function getCalendarEvents(): Promise<CalendarEventKV[]> {
+  const data = await req<CalendarEventKV[] | { status?: string }>('GET', '/calendar-events');
+  return Array.isArray(data) ? data : [];
+}
 export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolean; count: number }>('POST', '/calendar-events', events);
 
 // Parking Lot (quick-capture from Playground, KV-backed)
