@@ -14,6 +14,6 @@ Decision on samples: keep both pages for now because authenticated visual verifi
 
 The source-family decision is now recorded: use the existing CR8W Engineering Delivery data source, not the System Admin master sources. Remaining prerequisites are server-side restricted-source enforcement and a named server-managed user grant policy; do not expose or mirror-write the source until those are implemented.
 
-The browser diagnosis found that isolated-browser screenshots work while My Browser screenshots and DOM artifacts fail. Reconnect or repair the My Browser connector before repeating visual verification; no connector setting was changed.
+The user privately reset the individual Supabase password and authenticated successfully. Authenticated visual verification is complete: Overview, Stations, and Moves rendered on `/moves` after fixing custom-domain API routing and guarding the calendar response shape. No mutations were submitted.
 
 Do not rotate or expose the operator token unless access is intentionally transferred.

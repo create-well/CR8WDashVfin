@@ -35,6 +35,8 @@ Validation completed locally: `pnpm build` passed with 2,141 modules transformed
 ## Post-Deployment Verification
 
 - Live `https://www.cr8w.com/moves` navigation succeeded in My Browser, but authenticated interaction across all tabs remains **NOT NOW**: the browser connector returned no viewport elements, failed screenshot upload, rejected page DOM/console inspection with a Chrome-extension artifact error, and rejected the alternative browser-console execution path as unsupported. Static production asset checks confirm all six tab components are deployed; they do not replace authenticated click verification.
+
+Authenticated verification is now complete after the user privately reset the individual Supabase password. The first live check exposed a custom-domain API fallback to the retired `cr8w-home-v2` host and a non-array calendar runtime response that crashed `MovesPage`. Commits `be82d18` and `1565ca9` fixed same-origin routing and calendar response normalization. The final `/moves` check rendered Overview, Stations, and Moves with `Dashboard fetched just now`; no mutations were submitted.
 - `GET /api/dashboard-sync` returned HTTP 200 in three direct probes. Total latency was 0.733s, 0.564s, and 0.704s; mean 0.667s; payload size 55,518 bytes. The response contained Notion freshness metadata, 6 tasks, 6 stations, 10 messages, and no forum records.
 - Vercel runtime logs for deployment `dpl_B4ys56zRWmcfy8w85ehrWTdiNBAU` showed four `/api/dashboard-sync` requests, all HTTP 200, with no recent error or fatal entries. Build logs show the Vite build completed and deployment reached Ready; pre-existing Vercel TypeScript diagnostics for missing Node types and Supabase auth typings were emitted but did not block deployment.
 
