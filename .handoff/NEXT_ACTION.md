@@ -1,11 +1,12 @@
 # Next Action
 
-Deploy the feature branch to a preview and call `POST /api/server/notion-sync` without a body or with `{ "dryRun": true }`. Inspect only the response counts, `recordsSeen`, `latestSourceEdit`, and `writes`.
+Push the route correction and wait for a new Vercel preview. Call `POST /api/server/notion-sync` without a body or with `{ "dryRun": true }` using the app's existing publishable-key authorization.
 
 Acceptance criteria:
 
-1. The preview endpoint requires the existing API authorization.
-2. Dry-run returns `ok: true` and `writes: 0`.
-3. Counts match the known live Notion sources closely enough to proceed.
-4. No Supabase mirror keys change during dry-run.
-5. Only after the dry-run response is reviewed should a real `{ "dryRun": false }` request be considered.
+1. The preview endpoint no longer returns the legacy health response.
+2. The endpoint requires authorization.
+3. Dry-run returns `ok: true` and `writes: 0`.
+4. Counts are visible without returning page content.
+5. No Supabase mirror keys change during dry-run.
+6. Only after the dry-run response is reviewed should a real `{ "dryRun": false }` request be considered.
