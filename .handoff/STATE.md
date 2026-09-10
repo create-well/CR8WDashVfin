@@ -23,13 +23,22 @@ Updated `src/app/components/api.ts` so `sync()` calls `/api/dashboard-sync` inst
 
 Updated `DashboardContext` and `DashboardPayload` to retain mirror collections. Added `NotionMirrorSummary` to the team home page. It displays counts for People, Flows, Moves, Content, and Money, plus representative source-linked records and mirror freshness.
 
+## Preview Verification
+
+Preview deployment: `cr8w-dash-vfin-q7ppmmk7z-monnylog.vercel.app`
+
+`GET /api/dashboard-sync` returned `freshness.source: notion`, the verified run ID, and counts of PEOPLE 13, FLOWS 3, MOVES 4, CONTENT 2, and MONEY 0. The response also returned the existing operational collections.
+
+The preview loaded in My Browser. A follow-up DOM extraction failed because the browser session could not access a chrome-extension URL. Build and API-level verification passed; no browser mutation was performed.
+
 ## Validation
 
-- `./node_modules/.bin/vite build`: passed.
-- `./node_modules/.bin/esbuild api/dashboard-sync.ts --platform=node --format=esm`: passed.
-- `git diff --check`: passed.
+- Vite production build passed.
+- Esbuild parse for `api/dashboard-sync.ts` passed.
+- `git diff --check` passed.
+- Preview read endpoint returned all expected mirror counts and freshness metadata.
 - Existing Vite warnings remain: AuthGate dynamic/static import and a large application chunk.
 
 ## Next Action
 
-Commit and push the scoped UI slice. Deploy a preview and verify `GET /api/dashboard-sync` returns freshness plus mirror counts, then inspect the dashboard preview for the Notion mirror panel.
+The Notion mirror data is now connected to the dashboard frontend. The next bounded slice is visual refinement or deeper source-specific views. Do not run another real Notion write for this task.

@@ -11,13 +11,16 @@ Updated the client sync method to call `/api/dashboard-sync`, typed the mirror r
 - `git diff --check`
 - `./node_modules/.bin/vite build`
 - `./node_modules/.bin/esbuild api/dashboard-sync.ts --platform=node --format=esm`
+- Deployed `GET /api/dashboard-sync` returned `source: notion`.
+- Deployed mirror counts matched Supabase: 13 people, 3 flows, 4 moves, 2 content, 0 money.
+- Deployed response included the existing operational dashboard collections.
 
-The build includes the new panel in the ThisWeek page bundle. Existing warnings remain for the AuthGate import pattern and the large application chunk.
+The preview loaded in My Browser. DOM extraction was unavailable because the browser session could not access a chrome-extension URL. No browser mutation occurred.
 
-## Required Preview Check
+## Existing Gaps
 
-After push, call `GET /api/dashboard-sync` on the new preview. Verify `freshness.source` is `notion`, all five mirror keys are represented, and counts are 13, 3, 4, 2, and 0. Then inspect the team home panel.
+The repository has no project `tsconfig*.json`; the installed TypeScript 4.9 compiler cannot parse newer Node declaration syntax. Vitest is not installed. Existing Vite warnings remain for the AuthGate import pattern and the large application chunk. The old `/api/server/*` nested route remains legacy; `/api/dashboard-sync` is the canonical dashboard read endpoint and `/api/notion-sync` is the canonical operator write endpoint.
 
 ## Scope Protection
 
-Only the explicit dashboard sync function, API contract, dashboard context, home page, mirror summary component, and handoff files belong in this slice. Existing deletions, environment files, lockfile changes, and unrelated untracked feature/test files remain unstaged.
+The UI commit staged only the explicit dashboard sync function, API contract, dashboard context, home page, mirror summary component, and handoff records. Existing deletions, environment files, lockfile changes, and unrelated untracked feature/test files remain unstaged.
