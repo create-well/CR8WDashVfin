@@ -20,6 +20,7 @@ export interface SourceCollection {
   key: MirrorKey;
   label: string;
   records: NotionMirrorRecord[];
+  displayFields?: string[];
 }
 
 // Registry-driven collections: the server decides which sources are visible
@@ -30,7 +31,7 @@ export function sourceCollections(mirrors: NotionMirrors, sources?: NotionSource
   if (sources && sources.length > 0) {
     return sources
       .filter(source => source.visible !== false && (Object.keys(mirrors) as string[]).includes(source.key))
-      .map(source => ({ key: source.key as MirrorKey, label: source.label, records: mirrors[source.key as MirrorKey] ?? [] }));
+      .map(source => ({ key: source.key as MirrorKey, label: source.label, records: mirrors[source.key as MirrorKey] ?? [], displayFields: source.displayFields }));
   }
   return (Object.keys(LABELS) as MirrorKey[]).map(key => ({ key, label: LABELS[key], records: mirrors[key] ?? [] }));
 }
@@ -86,8 +87,18 @@ export function propertyDisplayValue(value: unknown): string | null {
   return null;
 }
 
-export function recordLabel(record: NotionMirrorRecord): string {
-  const first = Object.values(record.properties ?? {}).map(propertyDisplayValue).find(Boolean);
+export function recordLabel(record: NotionMirrorRecord, preferredFields?: string[]): string {
+  const properties = record.properties ?? {};
+  // The server registry lists display fields in priority order (Name first for
+  // every source). Notion returns properties in its own order, which can put a
+  // number like Amount ahead of the title, so the registry order wins.
+  for (const field of preferredFields ?? []) {
+    const value = propertyDisplayValue(properties[field]);
+    if (value) return value;
+  }
+  const named = propertyDisplayValue(properties.Name) ?? propertyDisplayValue(properties.Title);
+  if (named) return named;
+  const first = Object.values(properties).map(propertyDisplayValue).find(Boolean);
   return first ?? 'Untitled record';
 }
 
@@ -156,10 +167,11 @@ export function NotionMirrorSummary({ mirrors, freshness, sources }: NotionMirro
   const [property, setProperty] = useState('all');
   const [propertyValue, setPropertyValue] = useState('all');
   const collections = useMemo(() => sourceCollections(mirrors, sources), [mirrors, sources]);
-  const indexedRecords = useMemo(() => collections.flatMap(({ key, label, records }) => records.map(record => ({
+  const indexedRecords = useMemo(() => collections.flatMap(({ key, label, records, displayFields }) => records.map(record => ({
     key,
     label,
     record,
+    displayFields,
     searchText: recordSearchText(record),
   }))), [collections]);
   const propertyOptions = useMemo(() => buildPropertyOptions(collections.flatMap(collection => collection.records)), [collections]);
@@ -257,7 +269,7 @@ export function NotionMirrorSummary({ mirrors, freshness, sources }: NotionMirro
             Showing {Math.min(filteredRecords.length, 12)} of {filteredRecords.length} matching records
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, marginTop: 8 }}>
-            {filteredRecords.slice(0, 12).map(({ key, label, record }) => {
+            {filteredRecords.slice(0, 12).map(({ key, label, record, displayFields }) => {
               const amount = key === 'money' ? moneyAmountDisplay(record) : null;
               return (
                 <a
@@ -268,7 +280,7 @@ export function NotionMirrorSummary({ mirrors, freshness, sources }: NotionMirro
                   style={{ minWidth: 0, padding: '9px 10px', borderRadius: 9, border: '1px solid var(--border-soft, rgba(196,164,132,0.14))', color: 'inherit', textDecoration: 'none' }}
                 >
                   <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted, #6B5F7A)' }}>{label}</div>
-                  <div style={{ marginTop: 4, fontSize: '0.78rem', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recordLabel(record)}</div>
+                  <div style={{ marginTop: 4, fontSize: '0.78rem', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recordLabel(record, displayFields)}</div>
                   {amount !== null && (
                     <div style={{ marginTop: 3, fontSize: '0.78rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text, #2D2438)' }}>{amount}</div>
                   )}

@@ -43,6 +43,34 @@ describe('NotionMirrorSummary typed properties', () => {
     })).toBe('[DEV SAMPLE] Money income test');
   });
 
+  it('prefers registry display fields over Notion property order for labels', () => {
+    // Notion returns properties in schema order; on real Money pages Amount
+    // precedes Name, and the label must not become the amount.
+    const amountFirst = {
+      source: 'money' as const,
+      sourcePageId: 'money-2',
+      sourceUrl: null,
+      sourceLastEditedAt: null,
+      archived: false,
+      properties: {
+        Amount: { type: 'number', value: -67.89, displayValue: '-67.89', sensitivity: 'restricted' as const },
+        Name: { type: 'title', value: '[DEV SAMPLE] Money expense test', displayValue: '[DEV SAMPLE] Money expense test', sensitivity: 'restricted' as const },
+      },
+    };
+    expect(recordLabel(amountFirst, ['Name', 'Amount'])).toBe('[DEV SAMPLE] Money expense test');
+    // Without registry metadata the Name/Title fallback still beats first-truthy.
+    expect(recordLabel(amountFirst)).toBe('[DEV SAMPLE] Money expense test');
+    // First display field with a resolvable value wins even when Name is empty.
+    const noName = { ...amountFirst, properties: { ...amountFirst.properties, Name: { type: 'title', value: '', displayValue: '' } } };
+    expect(recordLabel(noName, ['Name', 'Amount'])).toBe('-67.89');
+  });
+
+  it('carries registry display fields onto source collections', () => {
+    const collections = sourceCollections(emptyMirrors, registrySources);
+    expect(collections.find(collection => collection.key === 'money')?.displayFields).toEqual(['Name', 'Amount']);
+    expect(collections.find(collection => collection.key === 'people')?.displayFields).toEqual(['Name']);
+  });
+
   it.each([
     ['select', { type: 'select', value: 'Committed' }, 'Committed'],
     ['multi-select', { type: 'multi_select', value: ['Podcast', 'Substack'] }, 'Podcast, Substack'],
