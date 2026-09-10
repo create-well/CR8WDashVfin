@@ -62,7 +62,7 @@ The Money data source was initially empty. Two clearly labeled development recor
 - `[DEV SAMPLE] Money income test`, amount `123.45`, page ID `3d724acf-799d-812e-b26f-fb8a6d07e953`
 - `[DEV SAMPLE] Money expense test`, amount `-67.89`, page ID `3d724acf-799d-817d-baaf-eac706a5abd6`
 
-They were verified through a follow-up Notion API query. They have not yet been copied into Supabase because the protected operator token was not available to the current agent.
+They were verified through a follow-up Notion API query and are now copied into Supabase through the protected operator sync.
 
 ## Current mirror state before the pending sync
 
@@ -70,9 +70,9 @@ They were verified through a follow-up Notion API query. They have not yet been 
 - Flows: 3
 - Moves: 4
 - Content: 2
-- Money: 0
+- Money: 2
 
-Do not claim Money is synced until `GET /api/dashboard-sync` reports Money count 2 and freshness metadata has a newer `mirrorUpdatedAt`.
+The verified sync run was `notion-1789046614763-04fbf8ed`. Its `mirrorUpdatedAt` is `2026-09-10T13:23:36.781Z`, and `GET /api/dashboard-sync` reports Money count 2.
 
 ## Frontend behavior
 

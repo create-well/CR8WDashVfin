@@ -1,7 +1,7 @@
 # Next Action
 
-Run the protected Notion operator in dry-run mode and verify that Money returns 2 records with Amount values 123.45 and -67.89. If the dry-run payload is correct, run the deliberate mirror refresh so the dashboard can display the samples.
+Open `https://www.cr8w.com`, select Money in the Notion mirror panel, and confirm the two `[DEV SAMPLE]` records render with numeric amounts.
 
-Then deploy the registry change and verify production reads Money records plus existing Checkbox and Number values.
+After UI testing, delete only the two labeled sample pages if they are no longer needed. Keep the source registry and typed property normalization.
 
-Delete the two `[DEV SAMPLE]` Notion pages after testing if they are no longer needed. Do not delete any non-sample Money records.
+Do not rotate or expose the operator token unless access is intentionally transferred.

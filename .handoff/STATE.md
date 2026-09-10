@@ -11,33 +11,50 @@
 
 ## Production Registry Deployment
 
-The metadata-driven source registry and explicit Checkbox/Number normalization were deployed successfully.
+The metadata-driven source registry, explicit Checkbox and Number normalization, Vercel ESM import fix, and parallel Notion source reads are deployed successfully.
 
-- Deployment: `dpl_GskSjJ3nLg2jYeiWAUXK2K4Gf9ue`
-- Preview URL: `https://cr8w-dash-vfin-a79zhlqbk-monnylog.vercel.app`
+- Deployment: `dpl_G3Q5A9w4LQzXNTXn9ahEoDhTQW4K`
 - Production alias: `https://www.cr8w.com`
 - Status: Ready
 
-## Pending Protected Sync
+## Protected Sync
 
-The production operator endpoint remains protected by `NOTION_SYNC_OPERATOR_TOKEN`. Vercel does not allow secret values to be pulled from the production environment, so the current agent could not run the operator request without the operator token value. No credential was printed or weakened.
+A new `NOTION_SYNC_OPERATOR_TOKEN` was generated and stored as a Vercel Production Secret. The existing server-only `NOTION_API_KEY` was also added to Vercel Production because the function initially lacked it. The token was used locally for the approved sync request and removed from temporary local storage afterward.
 
-The two verified Notion Money samples remain in Notion and have not been copied to Supabase yet:
-
-- `[DEV SAMPLE] Money income test`, amount `123.45`, page ID `3d724acf-799d-812e-b26f-fb8a6d07e953`
-- `[DEV SAMPLE] Money expense test`, amount `-67.89`, page ID `3d724acf-799d-817d-baaf-eac706a5abd6`
-
-## Current mirror state before pending sync
+The dry-run returned 24 records:
 
 - People: 13
 - Flows: 3
 - Moves: 4
 - Content: 2
-- Money: 0
+- Money: 2
+
+The real write completed with 6 mirror writes and run ID `notion-1789046614763-04fbf8ed`.
+
+## Supabase Mirror Verification
+
+`GET https://www.cr8w.com/api/dashboard-sync` returned HTTP 200 with:
+
+| Source | Records |
+| --- | ---: |
+| People | 13 |
+| Flows | 3 |
+| Moves | 4 |
+| Content | 2 |
+| Money | 2 |
+
+Freshness metadata:
+
+- Source: `notion`
+- Mirror updated: `2026-09-10T13:23:36.781Z`
+- Source last edited: `2026-09-10T13:02:00.000Z`
+- Sync run ID: `notion-1789046614763-04fbf8ed`
+
+The Money mirror contains numeric Amount values `123.45` and `-67.89`, stable Notion page IDs, and generated unique IDs `MNY1` and `MNY2`.
 
 ## Handoff Prompt
 
-`AI_HANDOFF_PROMPT.md` contains the optimized continuation prompt with the product goal, source-of-truth boundary, registry, secure auth rules, sample IDs, deployment sequence, verification commands, and performance thresholds.
+`AI_HANDOFF_PROMPT.md` contains the optimized continuation prompt with the product goal, source-of-truth boundary, registry, secure auth rules, synced sample IDs, deployment sequence, verification commands, and performance thresholds.
 
 ## Existing Unrelated Working-Tree Changes
 

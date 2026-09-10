@@ -1,22 +1,31 @@
 # Validation
 
-## Production
+## Production Deployment
 
 | Check | Result |
 | --- | --- |
-| Registry deployment | Ready |
-| Deployment ID | `dpl_GskSjJ3nLg2jYeiWAUXK2K4Gf9ue` |
+| Final deployment | Ready |
+| Deployment ID | `dpl_G3Q5A9w4LQzXNTXn9ahEoDhTQW4K` |
 | Production alias | `https://www.cr8w.com` |
-| Source registry included | Yes |
-| Checkbox normalization included | Yes |
-| Number normalization included | Yes |
+| Registry included | Yes |
+| Parallel source reads included | Yes |
 
-## Protected Sync
+## Protected Notion Sync
 
-The protected Notion operator request was not executed because Vercel does not permit production secret values to be pulled by `vercel env pull`. The endpoint still requires `NOTION_SYNC_OPERATOR_TOKEN`. No bypass, shared password, or secret exposure was used.
+The production operator initially failed because the registry import needed an explicit `.js` extension for Vercel ESM resolution. After that fix, the function exceeded the execution window because five sources were queried sequentially. Source reads were changed to `Promise.all`, then the function passed.
 
-The Money sample records were verified directly through the Notion API, but the Supabase Money mirror remains at 0 until the protected sync runs.
+The dry-run returned 24 records with Money count 2. The approved real write returned HTTP 200, run ID `notion-1789046614763-04fbf8ed`, and 6 writes.
+
+## Supabase Read Verification
+
+`GET /api/dashboard-sync` returned HTTP 200. Mirror counts were People 13, Flows 3, Moves 4, Content 2, and Money 2. Freshness source was Notion, and `mirrorUpdatedAt` was `2026-09-10T13:23:36.781Z`.
+
+Money Amount values were verified as numbers: `123.45` and `-67.89`.
+
+## Security
+
+A new random operator token was stored as a Vercel Production Secret. The local temporary token file was removed after use. No token value was printed, committed, or placed in the handoff prompt.
 
 ## Handoff
 
-`AI_HANDOFF_PROMPT.md` is complete and includes the exact safe continuation sequence for dry-run, real mirror refresh, verification, cleanup, and performance checks.
+`AI_HANDOFF_PROMPT.md` is complete and updated with the successful sync state.
