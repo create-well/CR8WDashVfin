@@ -98,6 +98,23 @@ The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visi
 - Test fixtures remain in non-prod because a concurrent operator may be mid-test; cleanup (plan step 13) is deferred.
 - Tooling: the duplicate project-scoped Supabase MCP server entry was removed from `.kimi-code/mcp.json` after its OAuth token failed twice; the authenticated account-scoped Supabase plugin MCP is the working path. The production direct-Postgres connection string was pasted in chat with a password placeholder; it was never used or stored, and `SUPABASE_DB_URL` remains unconfigured (MCP migrations made the psql wrapper optional for non-prod).
 
+### Follow-up pass, same day (quiet window)
+
+- Restore re-check passed clean: flows and content both matched their baseline SHA-256 after re-publication (`test-run-0005`). The earlier contamination was confirmed as the concurrent `smoke-run-1` operator, not an RPC defect.
+- Privilege audit found a real defect: Supabase grants EXECUTE on new functions to `anon`, `authenticated`, and `service_role` by default, so the migration's `revoke ... from public` was insufficient — browser roles could execute. The migration file now revokes `anon` and `authenticated` explicitly and grants `service_role`. Non-prod fixed and verified: anon=false, authenticated=false, service_role=true.
+- Local mock harness re-run on the current working tree: 6/6 pass.
+- **Production RPC installed 2026-09-10** (function only, no data path enabled). Verified post-install: anon/authenticated cannot execute, service_role can, SECURITY DEFINER with `search_path=pg_catalog, public`. Zero data change proven by table fingerprint: 26 keys, pre/post SHA-256 state fingerprint `7aeae8c030f651dd1788e6def277afbf23cba3b25a6c9d7285ad4f4d93d77a03` identical.
+- Outstanding before the first real atomic write: (a) production already carries a `cr8w_notion_mirror_engineeringDelivery` mirror key that is NOT in the RPC allowlist — decide whether to add it or publish per-source bundles that exclude it; (b) controlled two-client advisory-lock concurrency test still unrun (needs psql credentials for a second client); (c) app-side RPC call behind a disabled feature flag; (d) protected production dry-run (dry-runs must never call the RPC); (e) verified backup manifest.
+
+### Flag-gated RPC writer shipped (2026-09-10, commit `51d6cd0`, main)
+
+- Decision on (a): `cr8w_notion_mirror_engineeringDelivery` added to the RPC allowlist. The registry drives both endpoints; a partial allowlist would fail closed on every full sync. Migration re-applied to non-prod AND production; non-prod end-to-end `engineeringDelivery` bundle committed (`test-run-0006`, keys_written 2). Production privileges re-verified after replace: anon=false, authenticated=false, service_role=true.
+- `api/notion-sync.ts` now has the atomic path behind `CR8W_ATOMIC_RPC_ENABLED=true` (default off). Dry-runs never call the RPC. RPC rejection fails the run with zero writes; no silent fallback to sequential. Emergency rollback = unset the flag. Result payload now reports `writer: none|sequential|atomic-rpc`.
+- Tests: 24/24 Vitest pass in `api/__tests__/notion-sync.test.ts` (payload shape, run-ID/timestamp matching, allowlist refusal, all-registry-source coverage, flag parsing). `npm run build` clean. Mock RPC harness still 6/6.
+- Deploy: push to `main` triggered git-linked production deployment `dpl_8XLQWnz2o5jCvrdzTNo3JYxEDcJj` (READY, commit 51d6cd0). No CLI deploy needed; `.deploy-tmp/atomic-rpc` archive was prepared but unused.
+- Live check: unauthenticated POST to `/api/notion-sync` correctly returns 401 on the new deployment. The authorized dry-run is BLOCKED: local `.env.production` (a Vercel env pull) contains no `NOTION_SYNC_OPERATOR_TOKEN` — pull a fresh env or get the current token before running it. Flag remains unset in Vercel, so production still writes sequentially.
+- Repo hygiene note: GitHub reports 18 dependabot vulnerabilities (4 high) on the default branch — pre-existing, not from this change.
+
 ## Efficiency thresholds
 
 The last production read sample was approximately 0.92 seconds and 54.9 KB with one Supabase query. Keep the 30-second visible-tab poll unless three active-use samples show a real request or latency problem. If the payload exceeds roughly 250 KB or the mirror grows beyond roughly 500 records, move search and pagination server-side.
