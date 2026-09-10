@@ -77,3 +77,13 @@ Verified in the user's logged-in browser after the first atomic-RPC production s
 - Money filter: both `[DEV SAMPLE]` records render amounts below the record name — expense `-67.89`, income `123.45`. This closes the long-pending authenticated Money-amount visual pass.
 - Screenshots: `docs/cr8w-thisweek-verify-20260910.png`, `docs/cr8w-mirror-verify-20260910.png`, `docs/cr8w-money-verify-20260910.png`.
 - The two `[DEV SAMPLE]` Money pages remain in place pending the separate deletion decision.
+
+## Cron Atomic Run + Post-Atomic Rollback Baseline — 2026-09-10 ~16:55 local (Kimi session)
+
+Data-layer verification on production `axntibrdivccycxdwlzk` via Supabase MCP SQL:
+
+- The first scheduled cron sync after flag activation ran clean: `cr8w_notion_sync_meta` shows `syncRunId notion-1789083936188-db002140`, `mirrorUpdatedAt 2026-09-10T23:45:36.472Z`. This is a newer run than the manual operator sync (`...477542-a538f868` at 23:37:57Z), so the `*/15` cron tick at 23:45Z used the atomic writer. Closes NEXT_ACTION item 4.
+- Atomic writer signature confirmed: all seven `cr8w_notion_*` values are native jsonb (`object` / `array`), not the sequential writer's string scalars. Metadata counts equal actual array lengths for all six sources (13/3/4/2/2/1).
+- Authorized dry-run with the rotated operator token (read from `.env.local`): `ok: true`, `writer: "none"`, 25 records across 6 sources, `validationErrors: []`. Rotated token works; pipeline healthy against current Notion state.
+- Unauthenticated `GET /api/dashboard-sync` returns HTTP 401 — fail-closed as designed.
+- Post-atomic rollback baseline captured: `.backups/backup-20260910T234305Z` (gitignored), via new `scripts/capture-rollback-backup.mjs --from-json` mode (commit `500c0d9`) fed by a trusted MCP SQL export, because the rotated service key is unavailable locally. Rollback gate: PASS, 7 files, 6 snapshots. This baseline sits between the manual atomic run and the first atomic cron — it is the atomic-era rollback point.

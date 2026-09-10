@@ -6,10 +6,10 @@ Production sync now writes through `public.cr8w_publish_notion_snapshot` (one tr
 
 Next actions, in order:
 
-1. Authenticated UI pass on `https://www.cr8w.com`: confirm mirror panel freshness shows the 2026-09-10T23:37Z sync and Money amounts still render.
-2. Prove advisory-lock concurrency (step 12) over `psql` against non-prod `tcqybqimriafewwwdhoa`; needs the non-prod DB password from Supabase Dashboard.
-3. Reconcile Engineering Delivery: it is now mirror-written to KV (`cr8w_notion_mirror_engineeringDelivery`, 1 record) while the read endpoint still capability-gates it. Decide whether the earlier "restricted until grant" stance changes anything about mirror storage.
-4. Watch the next scheduled cron sync (`api/cron/notion-sync.ts` calls `runSync(false)`) — it will use the atomic writer; confirm a clean run in Vercel logs.
+1. ~~Authenticated UI pass~~ — DONE 2026-09-10 ~16:45 local (see VALIDATION.md): mirror panel fresh, Money amounts render, screenshots in `docs/`.
+2. Prove advisory-lock concurrency (step 12) over `psql` against non-prod `tcqybqimriafewwwdhoa`; needs the non-prod DB password from Supabase Dashboard. Still the only unproven plan step.
+3. Reconcile Engineering Delivery: it is now mirror-written to KV (`cr8w_notion_mirror_engineeringDelivery`, 1 record) while the read endpoint still capability-gates it. Decide whether the earlier "restricted until grant" stance changes anything about mirror storage. Team decision, not an operator action.
+4. ~~Watch the next scheduled cron sync~~ — DONE 2026-09-10 ~16:55 local: the 23:45Z cron tick wrote through the atomic RPC (`syncRunId notion-1789083936188-db002140`, all values native jsonb, counts match). Post-atomic rollback baseline at `.backups/backup-20260910T234305Z`, gate PASS. See VALIDATION.md.
 
 ## Registry-Driven Mirror UI — 2026-09-10 (deployed)
 
