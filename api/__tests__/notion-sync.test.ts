@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import handler, { resolveSourceEntries, summarizeSourceResults, validateMirrorRecord, type MirrorRecord, type SourceFreshness, type SourceSyncResult } from '../notion-sync';
+import handler, { atomicRpcEnabled, buildAtomicPublishPayload, resolveSourceEntries, summarizeSourceResults, validateMirrorRecord, type MirrorRecord, type SourceFreshness, type SourceSyncResult } from '../notion-sync';
 import { ENABLED_NOTION_SOURCES } from '../notion-sources';
 
 function record(source: MirrorRecord['source'], id: string, editedAt: string | null): MirrorRecord {
@@ -220,5 +220,82 @@ describe('mirror record contract validation', () => {
     const untyped = typedRecord({ properties: { Name: 'Ada' } });
     expect(validateMirrorRecord(untyped, false)).toEqual([]);
     expect(validateMirrorRecord(untyped, false).some(issue => issue.path.startsWith('properties.'))).toBe(false);
+  });
+});
+
+describe('atomic publish payload', () => {
+  const baseArgs = {
+    runId: 'notion-test-run',
+    counts: { flows: 1 },
+    sourceFreshness: {},
+    typedSources: ['flows'],
+    latestSourceEdit: '2026-09-10T10:00:00.000Z',
+    mirrorUpdatedAt: '2026-09-10T10:05:00.000Z',
+  };
+  const successfulFlows: SourceSyncResult[] = [
+    { source: 'flows', records: [record('flows', 'flow-1', '2026-09-10T10:00:00.000Z')], error: null },
+  ];
+
+  it('serializes source snapshots and metadata with matching run ID and edit time', () => {
+    const payload = buildAtomicPublishPayload({ ...baseArgs, successful: successfulFlows });
+
+    expect(payload.p_run_id).toBe('notion-test-run');
+    expect(payload.p_record_schema_version).toBe(2);
+    expect(payload.p_typed_sources).toEqual(['flows']);
+    expect(payload.p_source_last_edited_at).toBe('2026-09-10T10:00:00.000Z');
+    expect(payload.p_snapshots.map(snapshot => snapshot.key)).toEqual(['cr8w_notion_mirror_flows', 'cr8w_notion_sync_meta']);
+    expect(payload.p_snapshots.every(snapshot => snapshot.present)).toBe(true);
+
+    const records = JSON.parse(payload.p_snapshots[0].value!);
+    expect(records).toHaveLength(1);
+    expect(records[0].source).toBe('flows');
+    expect(records[0].sourcePageId).toBe('flow-1');
+    expect(records[0].recordSchemaVersion).toBe(2);
+    expect(records[0].archived).toBe(false);
+
+    const meta = JSON.parse(payload.p_snapshots[1].value!);
+    expect(meta.source).toBe('notion');
+    expect(meta.syncRunId).toBe('notion-test-run');
+    expect(meta.recordSchemaVersion).toBe(2);
+    expect(meta.sourceLastEditedAt).toBe('2026-09-10T10:00:00.000Z');
+    expect(meta.counts).toEqual({ flows: 1 });
+  });
+
+  it('passes a null edit timestamp through both the parameter and the metadata', () => {
+    const payload = buildAtomicPublishPayload({ ...baseArgs, latestSourceEdit: null, successful: successfulFlows });
+    const meta = JSON.parse(payload.p_snapshots[1].value!);
+    expect(payload.p_source_last_edited_at).toBeNull();
+    expect(meta.sourceLastEditedAt).toBeNull();
+  });
+
+  it('publishes metadata alone when every source failed', () => {
+    const payload = buildAtomicPublishPayload({ ...baseArgs, counts: { flows: 3 }, successful: [] });
+    expect(payload.p_snapshots).toHaveLength(1);
+    expect(payload.p_snapshots[0].key).toBe('cr8w_notion_sync_meta');
+  });
+
+  it('refuses a snapshot key outside the approved allowlist', () => {
+    const forged: SourceSyncResult[] = [
+      { source: 'evil' as never, records: [record('evil' as never, 'x-1', null)], error: null },
+    ];
+    expect(() => buildAtomicPublishPayload({ ...baseArgs, successful: forged })).toThrow(/not an approved CR8W mirror key/);
+  });
+
+  it('covers every enabled registry source in the approved keys', () => {
+    const allSuccessful: SourceSyncResult[] = ENABLED_NOTION_SOURCES.map(([source]) => ({
+      source, records: [record(source, `${source}-1`, '2026-09-10T10:00:00.000Z')], error: null,
+    }));
+    const payload = buildAtomicPublishPayload({ ...baseArgs, successful: allSuccessful });
+    expect(payload.p_snapshots).toHaveLength(ENABLED_NOTION_SOURCES.length + 1);
+  });
+
+  it('reads the atomic RPC flag as disabled unless exactly true', () => {
+    delete process.env.CR8W_ATOMIC_RPC_ENABLED;
+    expect(atomicRpcEnabled()).toBe(false);
+    process.env.CR8W_ATOMIC_RPC_ENABLED = 'yes';
+    expect(atomicRpcEnabled()).toBe(false);
+    process.env.CR8W_ATOMIC_RPC_ENABLED = 'true';
+    expect(atomicRpcEnabled()).toBe(true);
+    delete process.env.CR8W_ATOMIC_RPC_ENABLED;
   });
 });

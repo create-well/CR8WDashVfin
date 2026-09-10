@@ -128,6 +128,7 @@ begin
       'cr8w_notion_mirror_moves',
       'cr8w_notion_mirror_content',
       'cr8w_notion_mirror_money',
+      'cr8w_notion_mirror_engineeringDelivery',
       'cr8w_notion_sync_meta'
     ) then
       raise exception 'snapshot key is not an approved CR8W mirror key: %', item_key;
@@ -203,7 +204,10 @@ end;
 $$;
 
 -- Restrict execution to the server-side role used by the protected sync API.
--- Replace cr8w_sync_service with the actual non-browser database role after
--- inspecting the target project's roles. Do not grant this function to anon.
+-- Supabase grants EXECUTE on new functions to anon, authenticated, and
+-- service_role by default, so revoking PUBLIC alone is not enough. The
+-- browser roles (anon, authenticated) must never execute this function.
 revoke all on function public.cr8w_publish_notion_snapshot(text, integer, jsonb, timestamptz, jsonb) from public;
--- grant execute on function public.cr8w_publish_notion_snapshot(text, integer, jsonb, timestamptz, jsonb) to cr8w_sync_service;
+revoke execute on function public.cr8w_publish_notion_snapshot(text, integer, jsonb, timestamptz, jsonb) from anon;
+revoke execute on function public.cr8w_publish_notion_snapshot(text, integer, jsonb, timestamptz, jsonb) from authenticated;
+grant execute on function public.cr8w_publish_notion_snapshot(text, integer, jsonb, timestamptz, jsonb) to service_role;
