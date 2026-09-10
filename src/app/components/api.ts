@@ -24,8 +24,25 @@ function resolveApiBase(): string {
 const BASE = resolveApiBase();
 const DASHBOARD_SYNC_BASE = BASE.endsWith('/api/server') ? BASE.slice(0, -'/server'.length) : BASE;
 
-// Auth header: required by Supabase edge function; Vercel routes ignore it.
-const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${API_KEY}` };
+// The publishable key identifies the public client. When a Supabase session is
+// present, forward its access token so server-side source capabilities can be
+// evaluated without trusting browser profile labels or localStorage profiles.
+function requestHeaders(path: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (path !== '/dashboard-sync') headers.Authorization = `Bearer ${API_KEY}`;
+  if (typeof localStorage === 'undefined') return headers;
+  try {
+    const raw = localStorage.getItem('cr8w_supabase_auth');
+    const parsed = raw ? JSON.parse(raw) : null;
+    const accessToken = parsed?.access_token ?? parsed?.currentSession?.access_token;
+    if (typeof accessToken === 'string' && accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  } catch {
+    // Keep the publishable client header when session storage is unavailable.
+  }
+  return headers;
+}
 
 export async function req<T>(method: string, path: string, body?: unknown, base = BASE): Promise<T> {
   // One retry for GETs on network-level failures only; mutations fail fast.
@@ -40,7 +57,7 @@ export async function req<T>(method: string, path: string, body?: unknown, base 
     try {
       const res = await fetch(`${base}${path}`, {
         method,
-        headers,
+        headers: requestHeaders(path),
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
