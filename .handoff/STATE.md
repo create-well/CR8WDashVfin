@@ -3,7 +3,7 @@
 ## Confirmed State
 
 - Repository: `create-well/CR8WDashVfin`
-- Production role: deployed source for `cr8w.com`, confirmed by project owner on 2026-09-10.
+- Production role: deployed source for `cr8w.com`.
 - Current branch: `feat/notion-freshness-contract`, pushed to GitHub.
 - Vercel project: `cr8w-dash-vfin`.
 - Notion owns operational truth. Supabase is the read-only mirror plus auth, calendar tokens, and intake staging.
@@ -15,21 +15,34 @@ The dashboard accepts optional `cr8w_notion_sync_meta` metadata from the sync en
 
 The explicit Vercel function `api/notion-sync.ts` owns `POST /api/notion-sync`. It reads the five confirmed Notion data sources, paginates to completion, normalizes properties while preserving stable page IDs, and defaults to dry-run. With `dryRun: false`, it writes only isolated mirror keys and writes `cr8w_notion_sync_meta` last. It never writes legacy operational keys.
 
-The explicit route is now reachable on preview. Its authorization gate returns `401` because the preview environment does not expose one of the accepted public-key variables: `SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PUBLISHABLE_KEY`, or `SUPABASE_ANON_KEY`.
+The approved authentication design is a separate `NOTION_SYNC_OPERATOR_TOKEN` stored as a Vercel Preview Secret. It is not derived from Supabase public authentication and is not committed to the repository. The temporary local token file used for the request was removed after verification.
 
-## Blocked Action
+## Verified Real Write
 
-No Notion records were read by the preview endpoint and no Supabase mirror write occurred. Do not bypass this gate by embedding the public key in server code or by using the service-role key as a client authorization token.
+Preview deployment: `cr8w-dash-vfin-dz9qus2bf-monnylog.vercel.app`
 
-## Next Action
+Run ID: `notion-1789043618742-1b5bad40`
 
-Configure one server-side public-key variable in the Vercel preview environment, preferably `SUPABASE_PUBLISHABLE_KEY`, or provide a separate protected `NOTION_SYNC_OPERATOR_TOKEN` design. Then rerun `POST /api/notion-sync` with `{ "dryRun": true }`. Keep `dryRun: false` blocked until counts are reviewed.
+The approved request returned `ok: true`, `dryRun: false`, `recordsSeen: 22`, and `writes: 6`. Direct Supabase verification confirmed these keys exist:
+
+| Mirror key | Records |
+| --- | ---: |
+| `cr8w_notion_mirror_people` | 13 |
+| `cr8w_notion_mirror_flows` | 3 |
+| `cr8w_notion_mirror_moves` | 4 |
+| `cr8w_notion_mirror_content` | 2 |
+| `cr8w_notion_mirror_money` | 0 |
+
+Freshness metadata is present in `cr8w_notion_sync_meta` with `source: notion`, `mirrorUpdatedAt: 2026-09-10T12:33:42.193Z`, `sourceLastEditedAt: 2026-09-10T11:33:00.000Z`, and the run ID above.
+
+## Risks
+
+The source snapshots are stored in the existing KV table because no dedicated relational mirror schema is present. This is an isolated mirror namespace, not a replacement for relational modeling. The dashboard’s old `/api/server/*` route still collapses nested paths to the legacy handler, so the explicit `/api/notion-sync` route is the canonical operator endpoint.
 
 ## Validation
 
-- `git diff --check`: passed.
-- Vite production build: passed.
-- esbuild parse for `api/notion-sync.ts`: passed.
-- Explicit preview route: reachable.
-- Authorization behavior: correctly rejected missing preview key configuration with `401`.
-- No external data mutation occurred.
+Vite production build passed. Esbuild parsing passed for the explicit function and existing handlers. The dry-run passed with `writes: 0` and counts matching the real write. The real write passed and direct Supabase verification matched all counts and freshness metadata. No legacy operational keys were written.
+
+## Next Action
+
+Stop write testing for this task. The next bounded slice is to make the dashboard’s existing sync response read `cr8w_notion_sync_meta` through the exact deployed handler or to add a dedicated read endpoint, then verify the UI status bar against the stored freshness metadata.

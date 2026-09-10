@@ -1,11 +1,17 @@
 # Next Action
 
-Configure the Vercel preview environment with `SUPABASE_PUBLISHABLE_KEY`, or approve a separate protected `NOTION_SYNC_OPERATOR_TOKEN` design. Then redeploy the preview and call `POST /api/notion-sync` with `{ "dryRun": true }`.
+Stop write testing for this task. The real Notion mirror write is complete and verified.
 
-Acceptance criteria:
+Next bounded slice: make the dashboard’s existing sync response read `cr8w_notion_sync_meta` through the exact deployed handler, or add a dedicated read endpoint. Then verify the UI status bar against the stored freshness metadata.
 
-1. The endpoint returns `ok: true`.
-2. The response reports `writes: 0`.
-3. Counts match the live Notion source inspection.
-4. No Supabase mirror keys change during dry-run.
-5. A real `{ "dryRun": false }` request remains blocked until the dry-run counts are reviewed.
+Current verified counts:
+
+| Source | Records |
+| --- | ---: |
+| PEOPLE | 13 |
+| FLOWS | 3 |
+| MOVES | 4 |
+| CONTENT | 2 |
+| MONEY | 0 |
+
+Do not run another real mirror write unless source data changes or an explicit reconciliation is needed.
