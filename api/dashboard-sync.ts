@@ -174,6 +174,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         mirrorUpdatedAt: typeof freshness.mirrorUpdatedAt === 'string' ? freshness.mirrorUpdatedAt : null,
         sourceLastEditedAt: typeof freshness.sourceLastEditedAt === 'string' ? freshness.sourceLastEditedAt : null,
         syncRunId: typeof freshness.syncRunId === 'string' ? freshness.syncRunId : null,
+        recordSchemaVersion: freshness.recordSchemaVersion === 2 ? 2 : null,
+        typedSources: Array.isArray(freshness.typedSources) ? freshness.typedSources.filter((source: unknown): source is string => typeof source === 'string') : [],
         sourceFreshness: Object.fromEntries(Object.entries(sourceFreshness).flatMap(([source, value]) => {
           if (!capabilities[source as NotionSourceKey]?.restricted) return [];
           const item = parseObject(value);

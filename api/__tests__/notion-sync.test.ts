@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { summarizeSourceResults, type MirrorRecord, type SourceFreshness, type SourceSyncResult } from '../notion-sync';
+import handler, { resolveSourceEntries, summarizeSourceResults, validateMirrorRecord, type MirrorRecord, type SourceFreshness, type SourceSyncResult } from '../notion-sync';
+import { ENABLED_NOTION_SOURCES } from '../notion-sources';
 
 function record(source: MirrorRecord['source'], id: string, editedAt: string | null): MirrorRecord {
   return {
@@ -107,5 +108,117 @@ describe('Notion source-isolation reducer', () => {
     expect(summary.recordsSeen).toBe(1);
     expect(summary.latestSourceEdit).toBeNull();
     expect(summary.sourceFreshness.moves.sourceLastEditedAt).toBeNull();
+  });
+});
+
+describe('sources request filter', () => {
+  it('defaults to every enabled source when no filter is given', () => {
+    const selection = resolveSourceEntries(undefined);
+    expect(selection.error).toBeNull();
+    expect(selection.entries?.map(([source]) => source)).toEqual(ENABLED_NOTION_SOURCES.map(([source]) => source));
+  });
+
+  it('selects only the requested enabled sources', () => {
+    const selection = resolveSourceEntries(['flows', 'content']);
+    expect(selection.error).toBeNull();
+    expect(selection.entries?.map(([source]) => source)).toEqual(['flows', 'content']);
+  });
+
+  it('rejects an empty source list', () => {
+    expect(resolveSourceEntries([]).error).toMatch(/at least one source/);
+  });
+
+  it('rejects unknown source keys', () => {
+    expect(resolveSourceEntries(['flows', 'not-a-source']).error).toBeTruthy();
+  });
+
+  it('rejects non-string entries', () => {
+    expect(resolveSourceEntries([42]).error).toBeTruthy();
+  });
+
+  function stubResponse() {
+    return {
+      statusCode: 200,
+      payload: null as unknown,
+      setHeader() { /* noop */ },
+      status(code: number) { this.statusCode = code; return this; },
+      json(body: unknown) { this.payload = body; return this; },
+      end() { /* noop */ },
+    };
+  }
+
+  it('answers HTTP 400 for an invalid sources list without touching the database', async () => {
+    process.env.NOTION_SYNC_OPERATOR_TOKEN = 'test-operator-token';
+    const req = { method: 'POST', headers: { authorization: 'Bearer test-operator-token' }, body: { sources: ['not-a-source'] } };
+    const res = stubResponse();
+
+    await handler(req as never, res as never);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.payload).toMatchObject({ error: expect.stringContaining('sources') });
+  });
+
+  it('does not reject a valid sources list with 400', async () => {
+    process.env.NOTION_SYNC_OPERATOR_TOKEN = 'test-operator-token';
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SECRET_KEY;
+    const req = { method: 'POST', headers: { authorization: 'Bearer test-operator-token' }, body: { dryRun: true, sources: ['flows'] } };
+    const res = stubResponse();
+
+    await handler(req as never, res as never);
+
+    // Passed validation and auth; fails later on missing Supabase config.
+    expect(res.statusCode).toBe(500);
+    expect(res.payload).toMatchObject({ error: 'Missing Supabase server configuration' });
+  });
+});
+
+describe('mirror record contract validation', () => {
+  function typedRecord(overrides: Partial<MirrorRecord> = {}): MirrorRecord {
+    return {
+      source: 'people',
+      sourcePageId: 'page-1',
+      sourceUrl: null,
+      sourceLastEditedAt: '2026-09-10T10:00:00.000Z',
+      archived: false,
+      properties: {
+        Name: { type: 'title', value: 'Ada', sensitivity: 'team', sourceProperty: 'Name' },
+      },
+      ...overrides,
+    };
+  }
+
+  it('accepts a well-formed typed record', () => {
+    expect(validateMirrorRecord(typedRecord(), true)).toEqual([]);
+  });
+
+  it('flags a missing stable page ID and an unknown source', () => {
+    const issues = validateMirrorRecord(typedRecord({ source: 'nope' as never, sourcePageId: '' }), true);
+    expect(issues.map(issue => issue.path)).toEqual(expect.arrayContaining(['source', 'sourcePageId']));
+  });
+
+  it('flags malformed envelopes in typed mode', () => {
+    const broken = typedRecord({
+      properties: {
+        Amount: { type: 'number', value: Number.POSITIVE_INFINITY, sensitivity: 'team', sourceProperty: 'Amount' },
+        Bad: { value: 1 },
+        Plain: 7,
+      } as never,
+    });
+    const paths = validateMirrorRecord(broken, true).map(issue => issue.path);
+    expect(paths).toEqual(expect.arrayContaining([
+      'properties.Amount.value',
+      'properties.Bad.type',
+      'properties.Bad.sensitivity',
+      'properties.Bad.sourceProperty',
+      'properties.Plain',
+    ]));
+  });
+
+  it('skips envelope checks for untyped sources but still checks record fields', () => {
+    const untyped = typedRecord({ properties: { Name: 'Ada' } });
+    expect(validateMirrorRecord(untyped, false)).toEqual([]);
+    expect(validateMirrorRecord(untyped, false).some(issue => issue.path.startsWith('properties.'))).toBe(false);
   });
 });

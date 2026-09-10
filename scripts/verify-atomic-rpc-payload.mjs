@@ -11,13 +11,13 @@ export const MIRROR_KEYS = new Set([
   'cr8w_notion_sync_meta',
 ]);
 
-export function buildValidRpcPayload({ runId = 'notion-mock-run', includeAbsent = false } = {}) {
+export function buildValidRpcPayload({ runId = 'notion-mock-run', includeAbsent = false, sourceLastEditedAt = null } = {}) {
   const flows = [{
     recordSchemaVersion: 2,
     source: 'flows',
     sourcePageId: 'flow-page-1',
     sourceUrl: null,
-    sourceLastEditedAt: null,
+    sourceLastEditedAt,
     archived: false,
     properties: {
       'Public?': { notionType: 'checkbox', value: true, displayValue: 'Yes', sensitivity: 'team', isEmpty: false },
@@ -29,14 +29,14 @@ export function buildValidRpcPayload({ runId = 'notion-mock-run', includeAbsent 
     source: 'content',
     sourcePageId: 'content-page-1',
     sourceUrl: null,
-    sourceLastEditedAt: null,
+    sourceLastEditedAt,
     archived: false,
     properties: { 'Final?': { notionType: 'checkbox', value: false, displayValue: 'No', sensitivity: 'team', isEmpty: false } },
   }];
   const metadata = {
     source: 'notion',
     mirrorUpdatedAt: '2026-09-10T19:00:00.000Z',
-    sourceLastEditedAt: null,
+    sourceLastEditedAt,
     syncRunId: runId,
     counts: { flows: flows.length, content: content.length },
     recordSchemaVersion: 2,
@@ -48,7 +48,7 @@ export function buildValidRpcPayload({ runId = 'notion-mock-run', includeAbsent 
     { key: 'cr8w_notion_sync_meta', present: true, value: JSON.stringify(metadata) },
   ];
   if (includeAbsent) snapshots.splice(1, 0, { key: 'cr8w_notion_mirror_moves', present: false });
-  return { run_id: runId, record_schema_version: 2, typed_sources: ['flows', 'content'], source_last_edited_at: null, snapshots };
+  return { run_id: runId, record_schema_version: 2, typed_sources: ['flows', 'content'], source_last_edited_at: sourceLastEditedAt, snapshots };
 }
 
 export class MockKvTransaction {
@@ -64,6 +64,7 @@ export class MockKvTransaction {
     let writes = 0;
     try {
       if (!payload.run_id || payload.record_schema_version !== 2 || !Array.isArray(payload.typed_sources) || !Array.isArray(payload.snapshots) || payload.snapshots.length === 0) throw new Error('invalid RPC envelope');
+      if (payload.source_last_edited_at !== null && (!Number.isFinite(Date.parse(payload.source_last_edited_at)) || Date.parse(payload.source_last_edited_at) > Date.now())) throw new Error('source_last_edited_at cannot be in the future or invalid');
       for (const item of payload.snapshots) {
         if (!item || typeof item !== 'object' || typeof item.key !== 'string' || seen.has(item.key)) throw new Error('duplicate or malformed snapshot key');
         seen.add(item.key);
@@ -73,6 +74,7 @@ export class MockKvTransaction {
         const parsed = JSON.parse(item.value);
         if (item.key === 'cr8w_notion_sync_meta') {
           if (!parsed || Array.isArray(parsed) || parsed.source !== 'notion' || parsed.recordSchemaVersion !== 2 || parsed.syncRunId !== payload.run_id || !parsed.counts || Array.isArray(parsed.counts)) throw new Error('invalid sync metadata');
+          if (payload.source_last_edited_at === null ? parsed.sourceLastEditedAt !== null : parsed.sourceLastEditedAt !== payload.source_last_edited_at) throw new Error('source_last_edited_at mismatch');
           metadata = parsed;
         } else {
           if (!Array.isArray(parsed)) throw new Error('source snapshot must be an array');

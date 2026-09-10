@@ -14,7 +14,9 @@ create or replace function public.cr8w_publish_notion_snapshot(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+-- Resolve built-ins from pg_catalog first. pg_temp is intentionally omitted
+-- from this SECURITY DEFINER function to avoid temporary-object shadowing.
+set search_path = pg_catalog, public
 as $$
 declare
   item jsonb;
@@ -47,6 +49,11 @@ begin
 
   if p_snapshots is null or jsonb_typeof(p_snapshots) <> 'array' or jsonb_array_length(p_snapshots) = 0 then
     raise exception 'snapshots must be a non-empty JSON array';
+  end if;
+
+  if p_source_last_edited_at is not null
+     and p_source_last_edited_at > clock_timestamp() then
+    raise exception 'source_last_edited_at cannot be in the future';
   end if;
 
   select format_type(att.atttypid, att.atttypmod)
@@ -96,7 +103,16 @@ begin
     if (metadata->>'recordSchemaVersion')::integer <> 2 then raise exception 'sync metadata must be schema version 2'; end if;
     if metadata->>'syncRunId' <> p_run_id then raise exception 'sync metadata run ID mismatch'; end if;
     if jsonb_typeof(metadata->'counts') <> 'object' then raise exception 'sync metadata counts must be an object'; end if;
+    if p_source_last_edited_at is null then
+      if metadata->>'sourceLastEditedAt' is not null then
+        raise exception 'source_last_edited_at mismatch: RPC parameter is null but metadata is not';
+      end if;
+    elsif metadata->>'sourceLastEditedAt' is null
+       or (metadata->>'sourceLastEditedAt')::timestamptz <> p_source_last_edited_at then
+      raise exception 'source_last_edited_at mismatch between RPC parameter and metadata';
+    end if;
     metadata_present := true;
+    raise log 'CR8W atomic publish run_id=% metadata_source=notion typed_sources=%', p_run_id, p_typed_sources;
   end loop;
 
   for item in select value from jsonb_array_elements(p_snapshots)
@@ -151,6 +167,8 @@ begin
         if jsonb_typeof(record->'archived') <> 'boolean' then raise exception 'archived must be boolean for key %', item_key; end if;
       end loop;
       record_count := jsonb_array_length(parsed);
+      source_name := expected_source;
+      raise log 'CR8W atomic publish run_id=% source=% records=%', p_run_id, source_name, record_count;
       if metadata_present and metadata->'counts'->>expected_source is not null
          and (metadata->'counts'->>expected_source)::integer <> record_count then
         raise exception 'metadata count mismatch for source %', expected_source;

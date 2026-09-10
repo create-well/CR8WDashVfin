@@ -47,7 +47,7 @@ Registered sources:
 
 ## Current normalization
 
-`api/notion-sync.ts` explicitly normalizes Checkbox to boolean and Number to finite number or null. Existing handling covers title, rich text, select, status, multi-select, date, people, relation, unique ID, formula, and rollup.
+`api/notion-sync.ts` now consumes the shared `src/shared/notion-contract.ts` v2 contract. Typed envelopes include `notionType`, normalized `value`, `displayValue`, source sensitivity, and `isEmpty`; primitive compatibility remains available for sources whose registry flag is still false. Unit tests cover checkbox, number, date, relation, and envelope unwrapping behavior.
 
 Live schema evidence:
 
@@ -85,7 +85,7 @@ The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visi
 3. The protected real write returned HTTP 200 with 6 writes.
 4. `GET https://www.cr8w.com/api/dashboard-sync` returned Money count 2, freshness source `notion`, and a new `mirrorUpdatedAt`.
 5. Keep the two sample records until UI testing is complete. Delete only those two pages afterward if requested.
-6. The next iteration should add the typed property envelope and discover the next approved Notion data sources before enabling more registry entries.
+6. The shared typed envelope source-by-source rollout now has server-side validation and sync metadata versioning. `docs/NOTION_V2_ENVELOPE_MIGRATION.md` has been reviewed for partial-write, metadata-write failure, incomplete-backup, concurrent-sync, absent-key, and cache-refresh rollback cases, and now distinguishes the client-side operator token from the server-only Notion API key. The exact protected dry-run payload is `{"dryRun":true,"sources":["flows","content"]}`. The repository now includes `scripts/verify-v2-rollback-backup.mjs` with strict manifest types and semantic source/metadata validation, `scripts/v2-rollback-mitigation.mjs` for symlink-safe reads, rollback locks, and multi-key atomic restore coordination, and `scripts/rollback-operator-guard.mjs` for the authorized lock-held verification workflow. `scripts/inspect-kv-column.sql` and its guarded shell wrapper provide read-only KV schema inspection. The atomic RPC migration now dynamically inspects `kv_store_8dcd9693.value` at execution time and accepts only `text` or `jsonb`, casting the serialized payload to the confirmed target type; it rejects future or metadata-mismatched `source_last_edited_at` values and emits non-sensitive run/source/count logs. Its SECURITY DEFINER path now uses `search_path = pg_catalog, public`, omitting `pg_temp` to avoid temporary-object shadowing; public EXECUTE remains revoked. `scripts/apply-atomic-rpc-nonprod.sh` performs the same guarded inspection before applying the migration to a confirmed non-production target, and `scripts/setup-local-db-tools.sh` installed `postgresql-client` 16.15 and Docker CLI 29.1.3 with the Docker service left stopped. The staging execution plan now includes owner/grant/search-path review, lock serialization testing, and post-write log/freshness checks. The local mock RPC suite now covers matching, mismatched, and future source timestamps; the full mock harness passes all 6 tests. The staging wrapper remains blocked because `SUPABASE_DB_URL` and `ALLOW_NONPROD_MIGRATION` are not loaded. The targeted Flows + Content dry-run remains blocked until the operator token and Notion API key are available to the execution session.
 
 ## Efficiency thresholds
 

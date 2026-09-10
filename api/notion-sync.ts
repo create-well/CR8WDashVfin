@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { ENABLED_NOTION_SOURCES, type NotionPropertySensitivity, type NotionSourceKey } from './notion-sources.js';
+import { ENABLED_NOTION_SOURCES, NOTION_SOURCES, type NotionPropertySensitivity, type NotionSourceConfig, type NotionSourceKey } from './notion-sources.js';
 import { normalizeNotionProperty } from './notion-property-envelope.js';
+import { NOTION_RECORD_SCHEMA_VERSION, type NotionValidationIssue } from '../src/shared/notion-contract.js';
 
 const TABLE = 'kv_store_8dcd9693';
 type Database = SupabaseClient;
@@ -94,13 +95,66 @@ export function summarizeSourceResults(
   return { sourceFreshness, counts, recordsSeen, latestSourceEdit, successful, failed };
 }
 
+export type SourceSelection =
+  | { entries: [NotionSourceKey, NotionSourceConfig][]; error: null }
+  | { entries: null; error: string };
+
+/**
+ * Resolves the optional `sources` request filter against the enabled registry.
+ * Returns a 400-ready error for empty lists or unknown/disabled source keys.
+ */
+export function resolveSourceEntries(requested: unknown): SourceSelection {
+  if (requested === undefined || requested === null) return { entries: ENABLED_NOTION_SOURCES, error: null };
+  if (!Array.isArray(requested) || requested.length === 0) {
+    return { entries: null, error: 'sources must contain only enabled Notion source keys and at least one source' };
+  }
+  const entries = ENABLED_NOTION_SOURCES.filter(([source]) => requested.includes(source));
+  if (entries.length !== requested.length) {
+    return { entries: null, error: 'sources must contain only enabled Notion source keys and at least one source' };
+  }
+  return { entries, error: null };
+}
+
+const VALID_SENSITIVITIES = new Set(['public', 'team', 'restricted']);
+
+/**
+ * Contract-style validation for mirror records on the repo's current write path.
+ * Record-level fields are always checked; property envelopes are checked when the
+ * source runs with typedProperties (repo envelope shape from notion-property-envelope).
+ */
+export function validateMirrorRecord(record: MirrorRecord, typed: boolean): NotionValidationIssue[] {
+  const issues: NotionValidationIssue[] = [];
+  if (!(record.source in NOTION_SOURCES)) issues.push({ path: 'source', message: 'Unknown Notion source' });
+  if (typeof record.sourcePageId !== 'string' || !record.sourcePageId) issues.push({ path: 'sourcePageId', message: 'Expected a stable source page ID' });
+  if (!record.properties || typeof record.properties !== 'object' || Array.isArray(record.properties)) {
+    return [...issues, { path: 'properties', message: 'Expected a property map' }];
+  }
+  if (!typed) return issues;
+  for (const [name, envelope] of Object.entries(record.properties)) {
+    const path = `properties.${name}`;
+    if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope)) {
+      issues.push({ path, message: 'Expected a typed property envelope' });
+      continue;
+    }
+    const candidate = envelope as { type?: unknown; value?: unknown; sensitivity?: unknown; sourceProperty?: unknown };
+    if (typeof candidate.type !== 'string' || !candidate.type) issues.push({ path: `${path}.type`, message: 'Expected a Notion property type' });
+    if (!('value' in candidate)) issues.push({ path: `${path}.value`, message: 'Expected an envelope value' });
+    if (typeof candidate.sensitivity !== 'string' || !VALID_SENSITIVITIES.has(candidate.sensitivity)) issues.push({ path: `${path}.sensitivity`, message: 'Unsupported sensitivity' });
+    if (typeof candidate.sourceProperty !== 'string' || !candidate.sourceProperty) issues.push({ path: `${path}.sourceProperty`, message: 'Expected the source property name' });
+    if (candidate.type === 'number' && candidate.value !== null
+        && (typeof candidate.value !== 'number' || !Number.isFinite(candidate.value))) {
+      issues.push({ path: `${path}.value`, message: 'Number values must be finite or null' });
+    }
+  }
+  return issues;
+}
+
 function database(): Database {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) throw new Error('Missing Supabase server configuration');
   return createClient(url, key, { auth: { persistSession: false } });
 }
-
 async function writeMirror(db: Database, key: string, value: unknown) {
   const { error } = await db.from(TABLE).upsert({ key, value: JSON.stringify(value) });
   if (error) throw new Error(`Mirror write failed for ${key}: ${error.code ?? 'unknown'}`);
@@ -212,14 +266,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const request = req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {};
     const dryRun = request.dryRun !== false;
+    const selection = resolveSourceEntries(request.sources);
+    if (selection.error) { res.status(400).json({ error: selection.error }); return; }
     const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
     const db = database();
     const previousMeta = await readMirrorMeta(db);
     const completedAt = new Date().toISOString();
 
-    const sourceResults: SourceSyncResult[] = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => {
+    const validationErrors: NotionValidationIssue[] = [];
+    const sourceResults: SourceSyncResult[] = await Promise.all(selection.entries.map(async ([source, config]) => {
       try {
         const records = await fetchSource(source, config);
+        const issues = records.flatMap((record, index) => validateMirrorRecord(record, config.typedProperties)
+          .map(issue => ({ ...issue, path: `${source}[${index}].${issue.path}` })));
+        if (issues.length) {
+          validationErrors.push(...issues);
+          const preview = issues.slice(0, 3).map(issue => `${issue.path}: ${issue.message}`).join('; ');
+          return { source, records: null, error: `Contract validation failed: ${preview}${issues.length > 3 ? ` (+${issues.length - 3} more)` : ''}` };
+        }
         return { source, records, error: null };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Source sync failed';
@@ -228,6 +292,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }));
 
     const { sourceFreshness, successful, failed, recordsSeen, counts, latestSourceEdit } = summarizeSourceResults(sourceResults, previousMeta.sourceFreshness, completedAt);
+    const typedSources = successful.filter(result => NOTION_SOURCES[result.source].typedProperties).map(result => result.source);
 
     if (!dryRun) {
       for (const result of successful) await writeMirror(db, `cr8w_notion_mirror_${result.source}`, result.records);
@@ -238,9 +303,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         syncRunId: runId,
         counts,
         sourceFreshness,
+        recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION,
+        typedSources,
       });
     }
-    res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, sourceFreshness, failedSources: failed.map(result => ({ source: result.source, error: result.error })), writes: dryRun ? 0 : successful.length + 1 });
+    res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, sourceFreshness, recordSchemaVersion: NOTION_RECORD_SCHEMA_VERSION, typedSources, validationErrors, failedSources: failed.map(result => ({ source: result.source, error: result.error })), writes: dryRun ? 0 : successful.length + 1 });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Notion sync failed' });
   }

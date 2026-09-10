@@ -45,3 +45,24 @@ test('rejects metadata count mismatch without changing committed state', async (
   assert.equal(db.get('sentinel'), 'unchanged');
   assert.equal(db.get('cr8w_notion_mirror_flows'), undefined);
 });
+
+test('accepts a matching source_last_edited_at value', async () => {
+  const timestamp = '2026-09-10T18:00:00.000Z';
+  const payload = buildValidRpcPayload({ sourceLastEditedAt: timestamp });
+  const db = new MockKvTransaction();
+  const result = await db.rpc(payload);
+
+  assert.equal(result.committed, true);
+});
+
+test('rejects a source_last_edited_at mismatch and future timestamp', async () => {
+  const mismatch = buildValidRpcPayload({ sourceLastEditedAt: '2026-09-10T18:00:00.000Z' });
+  const metadata = JSON.parse(mismatch.snapshots.at(-1).value);
+  metadata.sourceLastEditedAt = '2026-09-10T18:01:00.000Z';
+  mismatch.snapshots.at(-1).value = JSON.stringify(metadata);
+  const db = new MockKvTransaction();
+  await assert.rejects(db.rpc(mismatch), /source_last_edited_at mismatch/);
+
+  const future = buildValidRpcPayload({ sourceLastEditedAt: '2999-01-01T00:00:00.000Z' });
+  await assert.rejects(db.rpc(future), /source_last_edited_at cannot be in the future/);
+});
