@@ -115,6 +115,13 @@ The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visi
 - Live check: unauthenticated POST to `/api/notion-sync` correctly returns 401 on the new deployment. The authorized dry-run is BLOCKED: local `.env.production` (a Vercel env pull) contains no `NOTION_SYNC_OPERATOR_TOKEN` — pull a fresh env or get the current token before running it. Flag remains unset in Vercel, so production still writes sequentially.
 - Repo hygiene note: GitHub reports 18 dependabot vulnerabilities (4 high) on the default branch — pre-existing, not from this change.
 
+### Backup + concurrency attempts (2026-09-10, both blocked on credentials)
+
+- Added `scripts/capture-rollback-backup.mjs`: builds a rollback-gate-compatible backup (manifest + hashed snapshot files under gitignored `.backups/<generationId>/`) from production reads, with count-drift and missing-key fail-closed checks. It refuses any non-production URL other than `axntibrdivccycxdwlzk`.
+- BLOCKED: local `.env.production` is fully stale — both `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_SECRET_KEY` return 401 from PostgREST, and the file has no `NOTION_SYNC_OPERATOR_TOKEN` at all. This one staleness blocks three remaining items: the backup capture, the authorized dry-run, and any app-path test. Unblock with `vercel login` + `vercel env pull .env.production` (or fresh values from the dashboards).
+- BLOCKED: the two-client advisory-lock contention test needs a second authenticated database session. A dblink self-connection fallback was attempted on non-prod (`T12 advisory lock contention` in `public.cr8w_rpc_test_results`) and failed at connect: password required. Needs the non-prod DB password or psql credentials.
+- Non-prod housekeeping: the concurrent `smoke-run-1` operator wiped the KV test rows (plan step 13 cleanup). The verdicts table `public.cr8w_rpc_test_results` survived with all 9 rows (T4-T12). My earlier verdicts were captured at execution time and stand; fixtures can be re-seeded by re-running this session's bundles if another test window opens.
+
 ## Efficiency thresholds
 
 The last production read sample was approximately 0.92 seconds and 54.9 KB with one Supabase query. Keep the 30-second visible-tab poll unless three active-use samples show a real request or latency problem. If the payload exceeds roughly 250 KB or the mirror grows beyond roughly 500 records, move search and pagination server-side.

@@ -7,6 +7,7 @@ build/
 .env.*.local
 .env.production
 .vercel/
+.backups/
 .vite/
 coverage/
 *.log
