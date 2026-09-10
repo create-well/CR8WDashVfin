@@ -1,95 +1,56 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-import { ENABLED_NOTION_SOURCES, type NotionSourceConfig, type NotionSourceKey } from './notion-sources.js';
+import { runNotionSync, type NotionSyncResult } from './_lib/notion-sync-runner.js';
 
-const TABLE = 'kv_store_8dcd9693';
-function database() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) throw new Error('Missing Supabase server configuration');
-  return createClient(url, key, { auth: { persistSession: false } });
+const MAX_BODY_BYTES = 2_048;
+
+type WriteRequest = { dryRun: false };
+
+function bearerToken(req: VercelRequest): string | null {
+  const value = req.headers.authorization;
+  return typeof value === 'string' ? value.match(/^Bearer\s+(.+)$/i)?.[1] ?? null : null;
 }
-async function writeMirror(key: string, value: unknown) {
-  const { error } = await database().from(TABLE).upsert({ key, value: JSON.stringify(value) });
-  if (error) throw new Error(`Mirror write failed for ${key}: ${error.code ?? 'unknown'}`);
+
+function tokensMatch(received: string | null, expected: string): boolean {
+  if (!received) return false;
+  const left = Buffer.from(received, 'utf8');
+  const right = Buffer.from(expected, 'utf8');
+  return left.length === right.length && timingSafeEqual(left, right);
 }
-function authorized(req: VercelRequest) {
-  const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '').trim();
-  const expected = process.env.NOTION_SYNC_OPERATOR_TOKEN ?? '';
-  return Boolean(token && expected && token === expected);
+
+function parseBody(req: VercelRequest): WriteRequest {
+  const length = req.headers['content-length'];
+  if (typeof length === 'string' && Number(length) > MAX_BODY_BYTES) throw new Error('RequestTooLarge');
+  if (typeof req.body === 'string') {
+    if (Buffer.byteLength(req.body, 'utf8') > MAX_BODY_BYTES) throw new Error('RequestTooLarge');
+    try { req.body = JSON.parse(req.body); } catch { throw new Error('InvalidJson'); }
+  }
+  const body = req.body as Partial<WriteRequest> | undefined;
+  if (!body || body.dryRun !== false || Object.keys(body).some((key) => key !== 'dryRun')) throw new Error('WriteRequiresExplicitFalseDryRun');
+  return { dryRun: false };
 }
-export interface NotionPropertyValue {
-  type: string;
-  value: unknown;
-  displayValue: string;
-  sensitivity: NotionSourceConfig['sensitivity'];
+
+function summary(result: NotionSyncResult) {
+  return { runId: result.runId, dryRun: result.dryRun, writes: result.writes, created: result.created, updated: result.updated, skipped: result.skipped, conflicts: result.conflicts, errors: result.errors, sourceCounts: result.sourceCounts, mirrorUpdatedAt: result.mirrorUpdatedAt, freshnessSource: result.freshnessSource };
 }
-function primitiveValue(property: any): unknown {
-  if (!property || !property.type) return null;
-  const value = property[property.type];
-  if (property.type === 'title' || property.type === 'rich_text') return (value ?? []).map((item: any) => item.plain_text ?? item.text?.content ?? '').join('');
-  if (property.type === 'checkbox') return Boolean(value);
-  if (property.type === 'number') return typeof value === 'number' && Number.isFinite(value) ? value : null;
-  if (property.type === 'select' || property.type === 'status') return value?.name ?? null;
-  if (property.type === 'multi_select') return (value ?? []).map((item: any) => item.name);
-  if (property.type === 'date') return value ? { start: value.start ?? null, end: value.end ?? null, time_zone: value.time_zone ?? null } : null;
-  if (property.type === 'people' || property.type === 'relation') return (value ?? []).map((item: any) => item.id);
-  if (property.type === 'unique_id') return value ? `${value.prefix ?? ''}${value.number ?? ''}` : null;
-  if (property.type === 'formula') return value?.[value.type] ?? null;
-  if (property.type === 'rollup') return value?.type === 'array' ? value.array : value?.[value.type] ?? null;
-  return value ?? null;
-}
-function displayValue(value: unknown): string {
-  if (value == null) return '';
-  if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(', ');
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-function propertyValue(property: any, config: NotionSourceConfig): unknown {
-  const value = primitiveValue(property);
-  if (!config.typedProperties) return value;
-  const typed: NotionPropertyValue = { type: property?.type ?? 'unknown', value, displayValue: displayValue(value), sensitivity: config.sensitivity };
-  return typed;
-}
-function normalize(page: any, source: NotionSourceKey, config: NotionSourceConfig) {
-  return {
-    source, sourcePageId: page.id, sourceUrl: page.url ?? null,
-    sourceLastEditedAt: page.last_edited_time ?? null, archived: Boolean(page.archived),
-    properties: Object.fromEntries(Object.entries(page.properties ?? {}).map(([name, value]) => [name, propertyValue(value, config)])),
-  };
-}
-async function notion(path: string, options: RequestInit = {}) {
-  const token = process.env.NOTION_API_KEY;
-  if (!token) throw new Error('Missing NOTION_API_KEY');
-  const response = await fetch(`https://api.notion.com/v1${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, 'Notion-Version': '2025-09-03', 'Content-Type': 'application/json', ...(options.headers ?? {}) } });
-  if (!response.ok) throw new Error(`Notion request failed with status ${response.status}`);
-  return response.json();
-}
-async function fetchSource(source: NotionSourceKey, config: NotionSourceConfig) {
-  const records: any[] = [];
-  let cursor: string | undefined;
-  do {
-    const page = await notion(`/data_sources/${config.dataSourceId}/query`, { method: 'POST', body: JSON.stringify({ page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) }) });
-    records.push(...(page.results ?? []).map((item: any) => normalize(item, source, config)));
-    cursor = page.has_more ? page.next_cursor ?? undefined : undefined;
-  } while (cursor);
-  return records;
-}
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-  if (!authorized(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+export default async function notionSync(req: VercelRequest, res: VercelResponse): Promise<void> {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Authorization');
+  if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); res.status(405).json({ error: 'method_not_allowed' }); return; }
+  const expected = process.env.NOTION_SYNC_OPERATOR_TOKEN;
+  if (!expected) { res.status(503).json({ error: 'notion_sync_unavailable' }); return; }
+  if (!tokensMatch(bearerToken(req), expected)) { res.status(401).json({ error: 'unauthorized' }); return; }
+
   try {
-    const request = req.body && typeof req.body === 'object' ? req.body : {};
-    const dryRun = request.dryRun !== false;
-    const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-    const snapshots: Record<string, any[]> = {};
-    let recordsSeen = 0; let latestSourceEdit: string | null = null;
-    const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config)] as const));
-    for (const [source, records] of sourceResults) { snapshots[source] = records; recordsSeen += records.length; for (const record of records) if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt; }
-    const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
-    if (!dryRun) { for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, records); await writeMirror('cr8w_notion_sync_meta', { source: 'notion', mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts }); }
-    res.json({ ok: true, dryRun, runId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 });
-  } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : 'Notion sync failed' }); }
+    parseBody(req);
+    const dryRun = await runNotionSync({ dryRun: true });
+    if (dryRun.errors > 0 || dryRun.conflicts > 0) { res.status(409).json({ ok: false, error: 'dry_run_failed', dryRun: summary(dryRun) }); return; }
+    const write = await runNotionSync({ dryRun: false });
+    res.status(200).json({ ok: true, dryRun: summary(dryRun), write: summary(write) });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    const clientError = ['RequestTooLarge', 'InvalidJson', 'WriteRequiresExplicitFalseDryRun'].includes(message);
+    res.status(clientError ? 400 : 502).json({ ok: false, error: clientError ? message.toLowerCase() : 'notion_sync_failed' });
+  }
 }
