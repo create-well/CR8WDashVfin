@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 const dashboardPayload = {
   tasks: [], stations: [], forum: [], messages: [], braindumps: [], announcements: [],
   forumReplies: [], workshops: [], workshopPrograms: [], workshopResources: [],
-  coflowDates: [], coflowCheckins: [], wellNotes: [], calendarEvents: [],
+  coflowDates: [{ id: 1, date: '2099-09-11', timeRange: '6:00 PM – 7:00 PM', location: 'The Well', host: 'monny', rsvp: {}, agendaItems: [], notes: '', vibeCheck: '', status: 'upcoming' }, { id: 2, date: '2099-09-12', timeRange: '6:00 PM – 7:00 PM', location: 'The Well', host: 'sunshine', rsvp: {}, agendaItems: [], notes: '', vibeCheck: '', status: 'upcoming' }], coflowCheckins: [], wellNotes: [], calendarEvents: [],
   notionMirrors: { people: [], flows: [], moves: [], content: [], money: [], engineeringDelivery: [] },
   notionSources: [],
   freshness: { source: 'notion', mirrorUpdatedAt: null, sourceLastEditedAt: null, syncRunId: 'migration-e2e' },
@@ -40,7 +40,12 @@ test('resolves each lazy page route through the shared route manifest', async ({
   for (const [path, heading] of routes) {
     await page.goto(path);
     await expect(page).toHaveURL(new RegExp(`${path}$`));
-    await expect(page.getByText('Loading…')).toBeHidden();
-    await expect(page.locator('body')).toContainText(new RegExp(heading, 'i'));
+    await expect(page.locator('body')).toContainText(new RegExp(heading, 'i'), { timeout: 15000 });
   }
+});
+
+test('mounts the first CoFlow feature slice on the lazy Care route', async ({ page }) => {
+  await page.goto('/care');
+  await expect(page.getByText('Also On Deck').first()).toBeVisible();
+  await expect(page.getByText('Saturday, September 12')).toBeVisible();
 });

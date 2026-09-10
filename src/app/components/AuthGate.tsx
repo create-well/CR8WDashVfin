@@ -15,7 +15,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js';
-import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
+import cwLogoImg from '../../assets/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
 // ── Supabase browser client (inline config — publishable key is public-safe) ──
 const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
