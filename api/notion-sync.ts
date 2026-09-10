@@ -24,7 +24,7 @@ async function writeMirror(key: string, value: unknown) {
 
 function authorized(req: VercelRequest) {
   const token = (req.headers.authorization ?? '').replace(/^Bearer\s+/i, '').trim();
-  const expected = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? '';
+  const expected = process.env.NOTION_SYNC_OPERATOR_TOKEN ?? '';
   return Boolean(token && expected && token === expected);
 }
 
