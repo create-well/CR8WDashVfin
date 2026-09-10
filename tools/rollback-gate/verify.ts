@@ -140,11 +140,36 @@ function safePath(root: string, candidate: string): string {
   return resolved;
 }
 
+async function rejectSymlinkComponents(root: string, target: string): Promise<void> {
+  const resolvedRoot = resolve(root);
+  const rel = relative(resolvedRoot, target);
+  const components = rel ? rel.split(sep) : [];
+  let current = resolvedRoot;
+  for (const component of components) {
+    current = resolve(current, component);
+    const stat = await lstat(current);
+    if (stat.isSymbolicLink()) fail(`symlink path component is not allowed: ${relative(resolvedRoot, current)}`);
+  }
+}
+
+async function collectFiles(directory: string, root: string, found: Set<string>): Promise<void> {
+  await rejectSymlinkComponents(root, directory);
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const candidate = resolve(directory, entry.name);
+    if (entry.isSymbolicLink()) fail(`symlink in backup directory: ${relative(root, candidate)}`);
+    if (entry.isDirectory()) await collectFiles(candidate, root, found);
+    else if (entry.isFile()) found.add(candidate);
+    else fail(`unsupported backup directory entry: ${relative(root, candidate)}`);
+  }
+}
+
 export async function verifyBackupFiles(root: string, manifest: BackupManifest, backupDirectory = '.'): Promise<void> {
   validateManifest(manifest);
   const referenced = new Set<string>();
   for (const entry of manifest.entries) {
     const path = safePath(root, entry.path);
+    await rejectSymlinkComponents(root, path);
     const stat = await lstat(path);
     if (stat.isSymbolicLink()) fail(`symlink backup file is not allowed: ${entry.path}`);
     if (!stat.isFile()) fail(`backup path is not a regular file: ${entry.path}`);
@@ -155,12 +180,9 @@ export async function verifyBackupFiles(root: string, manifest: BackupManifest, 
     referenced.add(path);
   }
   const dir = safePath(root, backupDirectory);
-  const files = await readdir(dir, { withFileTypes: true });
-  for (const file of files) {
-    const candidate = resolve(dir, file.name);
-    if (file.isSymbolicLink()) fail(`symlink in backup directory: ${file.name}`);
-    if (file.isFile() && !referenced.has(candidate)) fail(`unreferenced backup file: ${file.name}`);
-  }
+  const files = new Set<string>();
+  await collectFiles(dir, resolve(root), files);
+  for (const file of files) if (!referenced.has(file)) fail(`unreferenced backup file: ${relative(resolve(root), file)}`);
 }
 
 export function verifySnapshotSet(snapshots: unknown[], metadata: unknown, generationId: string): void {
