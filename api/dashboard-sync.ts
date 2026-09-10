@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { ENABLED_NOTION_SOURCES } from './notion-sources';
+import { ENABLED_NOTION_SOURCES } from './notion-sources.js';
 
 const TABLE = 'kv_store_8dcd9693';
 const OPERATIONAL_KEYS = [
