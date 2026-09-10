@@ -94,7 +94,20 @@ The following remain unstaged and untouched: `pnpm-workspace.yaml`, legacy impor
 
 The typed-property plan remains the correct next implementation boundary: replace the open `type: string` envelope with a closed Notion property-type union, preserve source-specific value types, add `sourceProperty` provenance, and reserve non-fatal `warnings` for unsupported types or invalid normalization. Required tests cover number, checkbox, select, status, multi-select, date ranges, relations, URLs, unique IDs, formulas, rollups, unsupported types, and invalid numbers.
 
-The approved Engineering Delivery source family is the existing CR8W Engineering Delivery data source `eb498877-a74f-4abe-bac3-8d1dfbc62db8`, not the separate System Admin master sources. It remains restricted. Before any dashboard exposure or real mirror write, the server must validate a Supabase access token, confirm an active subject, and require a server-managed `engineeringDelivery` read grant or role. No such grant was created in this pass.
+The approved Engineering Delivery source family is the existing CR8W Engineering Delivery data source `eb498877-a74f-4abe-bac3-8d1dfbc62db8`, not the separate System Admin master sources. It remains restricted. The server now requires a valid Supabase access token for `/api/dashboard-sync`, and Engineering Delivery requires an explicit server-managed `engineeringDelivery` read capability or source grant. Broad profile labels and the former broad engineering role no longer authorize it. No grant was created in this pass.
+
+## Fail-Closed Authorization Deployment — 2026-09-10
+
+- Commit: `4eb77f0` (`feat: enforce engineering delivery capability`)
+- Deployment: `dxSa9vxPiRMSDtY4JLfEPKkMFnxN`, Ready and aliased to `https://www.cr8w.com`
+- Unauthenticated `GET /api/dashboard-sync`: HTTP 401 with `{"error":"Unauthorized"}`
+- Allowed-origin preflight: HTTP 200 with `Access-Control-Allow-Origin: https://www.cr8w.com`
+- Homepage: HTTP 200
+- Focused tests: 3 files, 22 tests passed
+- Full serial Vitest: 8 files, 45 tests passed
+- Production build: passed
+
+Typed mirror normalization now routes through `api/notion-property-envelope.ts`, preserving source property names, sensitivity, typed date envelopes, stable relation IDs, display values, and non-fatal warnings.
 
 The approved protected Notion sync dry-run was attempted without writing mirror data. Vercel confirms `NOTION_SYNC_OPERATOR_TOKEN` and `NOTION_API_KEY` exist as Hidden Production Secrets, but `vercel env pull` supplied `[SENSITIVE]` placeholders because secret values cannot be downloaded. The resulting POST to `/api/notion-sync` returned HTTP 401 Unauthorized, so no source counts were obtained and no real write was attempted. The smallest unblock is an authorized operator providing the existing token through a secure local secret mechanism; do not rotate, print, commit, or paste the token.
 
