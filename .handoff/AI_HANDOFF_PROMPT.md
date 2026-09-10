@@ -91,6 +91,37 @@ The dashboard polls `/api/dashboard-sync` every 30 seconds while the tab is visi
 
 The last production read sample was approximately 0.92 seconds and 54.9 KB with one Supabase query. Keep the 30-second visible-tab poll unless three active-use samples show a real request or latency problem. If the payload exceeds roughly 250 KB or the mirror grows beyond roughly 500 records, move search and pagination server-side.
 
+## Shared credit and skill routing
+
+Treat shared Manus project credits as a limited delivery budget. Spend them on verification, not repeated discovery. Read the relevant skill once, reuse its decisions, batch independent read-only checks, and avoid rerunning a build or deployment unless the source commit or deployment configuration changed. Prefer one bounded production check over repeated polling.
+
+Use these skills when the task matches:
+
+| Work | Skill |
+| --- | --- |
+| Notion source-of-truth workers | `notion-integration-workers` |
+| Incremental mirror and checkpoints | `database-sync-workers` |
+| Polling, webhooks, or live delivery | `live-sync-architecture` |
+| Background or scheduled execution | `automation-and-scheduling` |
+| API boundary design | `api-designer` |
+| UI performance and load behavior | `performance-optimization` |
+| Browser UI verification | `chrome-devtools` or `puppeteer-skill` |
+| Production deployment and checks | `ci-cd-and-automation`, `git-workflow-and-versioning` |
+| Secure context transfer | `secure-project-handoff` |
+| Debugging unexpected failures | `debugging-and-error-recovery` |
+
+Do not invoke unrelated skills only to increase coverage. For a normal dashboard change, the minimum route is: inspect the relevant skill, inspect the affected files, make one scoped change, run one build and one focused check, deploy once from a clean committed checkout, verify one live endpoint, then update the handoff.
+
+## Delivery stages
+
+Development stages are: inspect, implement, validate, deploy, verify, document. Keep Notion writes separate from code deployment. Use dry-run before any real mirror write. Keep production secrets in Vercel only. Deploy from `git archive HEAD` or an equivalent clean checkout when unrelated local changes exist. Never deploy the user’s unrelated working-tree changes by accident.
+
+For a source addition, finish these checks in order: schema access, property-type map, dry-run counts, sensitivity review, real mirror write, dashboard endpoint verification, UI filter verification, and handoff update. Stop if any earlier check fails.
+
+## Credit-saving rules
+
+Do not use subagents for a single-file inspection, do not search the web when repository state is sufficient, do not call a browser repeatedly when one endpoint and one visual check answer the question, and do not regenerate assets that already exist. If a browser artifact fails, report the limitation instead of spending repeated calls trying to force a screenshot.
+
 ## Verification commands
 
 Use these commands from the local project directory. Never print secret values.
