@@ -118,7 +118,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sourceFreshness = parseObject(freshness.sourceFreshness);
     const readableSources = ENABLED_NOTION_SOURCES.filter(([source]) => capabilities[source].restricted);
     const mirrors = Object.fromEntries(
-      readableSources.map(([source]) => [source, parseList(values[`cr8w_notion_mirror_${source}`])]),
+      ENABLED_NOTION_SOURCES.map(([source]) => [
+        source,
+        capabilities[source].restricted ? parseList(values[`cr8w_notion_mirror_${source}`]) : [],
+      ]),
     );
     const notionSources = readableSources.map(([source, config]) => publicSourceMetadata(source, config, mirrors[source].length));
 
