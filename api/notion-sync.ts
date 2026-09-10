@@ -76,6 +76,26 @@ async function fetchSource(source: NotionSourceKey, config: NotionSourceConfig) 
   } while (cursor);
   return records;
 }
+
+export async function runSync(dryRun: boolean) {
+  const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
+  const generationId = `generation-${crypto.randomUUID()}`;
+  const snapshots: Record<string, any[]> = {};
+  let recordsSeen = 0; let latestSourceEdit: string | null = null;
+  const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config)] as const));
+  for (const [source, records] of sourceResults) {
+    snapshots[source] = records;
+    recordsSeen += records.length;
+    for (const record of records) if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt;
+  }
+  const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
+  if (!dryRun) {
+    for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, { generationId, records });
+    await writeMirror('cr8w_notion_sync_meta', { source: 'notion', generationId, mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts });
+  }
+  return { dryRun, runId, generationId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*'); res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
@@ -86,18 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const request = req.body && typeof req.body === 'object' ? req.body : {};
     const dryRun = request.dryRun !== false;
-    const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-    const generationId = `generation-${crypto.randomUUID()}`;
-    const snapshots: Record<string, any[]> = {};
-    let recordsSeen = 0; let latestSourceEdit: string | null = null;
-    const sourceResults = await Promise.all(ENABLED_NOTION_SOURCES.map(async ([source, config]) => [source, await fetchSource(source, config)] as const));
-    for (const [source, records] of sourceResults) { snapshots[source] = records; recordsSeen += records.length; for (const record of records) if (record.sourceLastEditedAt && (!latestSourceEdit || record.sourceLastEditedAt > latestSourceEdit)) latestSourceEdit = record.sourceLastEditedAt; }
-    const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
-    if (!dryRun) {
-      for (const [source, records] of Object.entries(snapshots)) await writeMirror(`cr8w_notion_mirror_${source}`, { generationId, records });
-      await writeMirror('cr8w_notion_sync_meta', { source: 'notion', generationId, mirrorUpdatedAt: new Date().toISOString(), sourceLastEditedAt: latestSourceEdit, syncRunId: runId, counts });
-    }
-    res.json({ ok: true, dryRun, runId, generationId, recordsSeen, counts, latestSourceEdit, writes: dryRun ? 0 : Object.keys(snapshots).length + 1 });
+    res.json({ ok: true, ...(await runSync(dryRun)) });
   } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : 'Notion sync failed' }); }
   finally { syncInFlight = false; }
 }

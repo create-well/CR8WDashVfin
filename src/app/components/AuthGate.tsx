@@ -19,7 +19,7 @@ import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png'
 
 // ── Supabase browser client (inline config — publishable key is public-safe) ──
 const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_BcNFTPWCohlAIHKjfyh7zA_GGG2c82n';
 
 let _client: SupabaseClient | null = null;
 function client(): SupabaseClient {
