@@ -16,10 +16,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js';
 import cwLogoImg from '../../assets/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
+import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 
 // ── Supabase browser client (Vite-injected, browser-safe configuration) ───────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+// The generated Supabase helper keeps preview builds working when Vite does not
+// expose the project's VITE_* variables to the browser bundle.
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? `https://${projectId}.supabase.co`;
+const SUPABASE_PUBLISHABLE_KEY = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ?? publicAnonKey;
 
 let _client: SupabaseClient | null = null;
 function client(): SupabaseClient {
