@@ -8,9 +8,7 @@ updates:
       # Keep both bare and npm:-prefixed names because security alerts have
       # surfaced with both identifier styles across Dependabot runs.
       - dependency-name: esbuild
-        versions: ['<0.28.1']
       - dependency-name: npm:esbuild
-        versions: ['<0.28.1']
       - dependency-name: undici
         versions: ['<=5.28.4']
       - dependency-name: npm:undici
