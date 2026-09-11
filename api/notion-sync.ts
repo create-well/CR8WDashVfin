@@ -246,7 +246,7 @@ export function buildAtomicPublishPayload(args: {
 }
 
 async function publishAtomic(db: Database, payload: AtomicPublishPayload): Promise<{ keys_written?: number }> {
-  const { data, error } = await db.rpc('cr8w_publish_notion_snapshot', payload as Record<string, unknown>);
+  const { data, error } = await db.rpc('cr8w_publish_notion_snapshot', payload as unknown as Record<string, unknown>);
   if (error) throw new Error(`Atomic publish failed: ${error.code ?? 'unknown'}`);
   const result = data as { committed?: boolean; keys_written?: number } | null;
   if (!result || result.committed !== true) throw new Error('Atomic publish did not commit');
