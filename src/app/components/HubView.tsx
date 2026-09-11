@@ -8,6 +8,7 @@ import {
 } from './data';
 import { MBodyWidget } from './MBodyWidget';
 import { NotesFromTheWell } from './NotesFromTheWell';
+import { SHARED_EVENTS_LABEL, personalCalendarAuthMessage, sharedEventsAvailableNote } from './calendarMessaging';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
 import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
 import * as api from './api';
@@ -1161,7 +1162,10 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                 </button>
                 {gcalError && (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', marginTop: 6, fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    {personalCalendarAuthMessage(gcalError)}
+                    {sharedEventsAvailableNote(kvCalEvents.length > 0) && (
+                      <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>{sharedEventsAvailableNote(kvCalEvents.length > 0)}</div>
+                    )}
                   </div>
                 )}
               </>
@@ -1194,8 +1198,11 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   </div>
                 ) : gcalError ? (
                   <div style={{ fontSize: '0.72rem', color: '#D46B6B', padding: '8px 0', fontFamily: 'var(--font-label)' }}>
-                    {gcalError}
+                    {personalCalendarAuthMessage(gcalError)}
                     <button onClick={connectGoogleCalendar} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#1A73E8', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', fontFamily: 'inherit' }}>Reconnect</button>
+                    {sharedEventsAvailableNote(kvCalEvents.length > 0) && (
+                      <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>{sharedEventsAvailableNote(kvCalEvents.length > 0)}</div>
+                    )}
                   </div>
                 ) : gcalEvents.length === 0 ? (
                   <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontFamily: 'var(--font-body)' }}>No personal events scheduled for today</div>
@@ -1712,7 +1719,7 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
                   <span style={{
                     fontFamily: "var(--font-display)", fontSize: '0.92rem',
                     fontWeight: 600, color: 'var(--cr8w-text, #2C1C10)',
-                  }}>📅 next up</span>
+                  }}>{SHARED_EVENTS_LABEL}</span>
                   <span style={{
                     fontFamily: 'var(--font-label)', fontSize: '0.58rem',
                     color: 'var(--text-muted)', fontWeight: 500,
