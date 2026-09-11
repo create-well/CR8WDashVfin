@@ -96,3 +96,11 @@ Live logged-in walkthrough of `https://www.cr8w.com` surfaced two usability defe
 - **Custom-domain banner on the custom domain.** `RootLayout` hardcoded `createwell.monnyfest.co` as the custom domain, so the "viewing via the direct link" banner rendered on `www.cr8w.com` itself. Condition inverted: banner now shows only on `*.vercel.app` direct links. Also updated the WelcomeModal iPhone install steps to `www.cr8w.com`.
 - Env/connectors audit: all required Vercel production vars present (flag, `GCAL_CLIENT_SECRET`, `SUPABASE_JWKS_URL` refreshed same day); rotated operator token + Notion key verified working via dry-run. Nothing needed overriding — do not rotate working credentials.
 - Local vitest/typecheck could not run (load avg 30-41, Docker pegged; the documented environment limitation). e2e stale fixture uses a day-old timestamp, unaffected. Vercel cloud build passed and is the verification gate.
+
+## Functional Sweep + Countdown Fix — 2026-09-10 ~18:30 local (Kimi session)
+
+Logged-in sweep of all seven registered routes (`/`, `/moves`, `/care`, `/flows`, `/money`, `/decisions`, `/system`): all render, zero `[role=alert]` errors, healthy empty states where stores are empty by design.
+
+- Fixed in `48620ca`, verified live: TaskOverview and TopHeroCards rendered `getDaysToLaunch()` raw, producing "-148 DAYS UNTIL April 15, 2026" after the launch date passed. Both now match GeyserView/HubView past-launch handling. Live `/moves` shows "+148 days since" in both countdowns.
+- Server env audit: every `process.env.*` referenced by `api/` is present in Vercel production EXCEPT two: `CR8W_ICAL_URL` (shared Google Calendar connector — route `POST /api/server/calendar-ical-sync` is deployed and ready; the secret iCal address was never configured; needs the URL from the shared calendar's Google settings) and `NOTION_WEBHOOK_SECRET` (in-flight `feat/notion-webhook`; handler is fail-closed without it — `verifySignature` returns false).
+- Confirmed from the parallel session's landed commits: Engineering Delivery reconciliation decided (keep mirror storage, `5c2179d`), step-12 concurrency proof closed — all 13 atomic-sync plan steps now passed (`efe888d`), immutable asset caching added (`090ffce`).
