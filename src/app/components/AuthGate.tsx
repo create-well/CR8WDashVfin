@@ -1,37 +1,36 @@
 /**
  * CR8W Create Well — Auth Gate (real Supabase Auth)
  *
- * Replaces the shared-password gate. Each user registers their own
- * email + password and picks a profile. Sessions persist live via
- * Supabase (localStorage) and survive across devices.
- *
  * Flow
- *   Sign In   → email + password → supabase.auth.signInWithPassword
- *   Register  → email + password + display name + profile → signUp
- *               (profile + name stored in user_metadata)
+ *   Sign In        → email + password → supabase.auth.signInWithPassword
+ *   Register       → email + password + display name + profile → signUp
+ *   Forgot pw      → email → resetPasswordForEmail → user clicks email link
+ *   PASSWORD_RECOVERY (from email link) → set-new-password form → updateUser
  *
  * The chosen profile key is mirrored to localStorage.cr8w_user_profile
  * so the rest of the app (chat identity, dashboards) keeps working.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { createClient, type SupabaseClient, type Session } from '@supabase/supabase-js';
-import cwLogoImg from '../../assets/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { publicAnonKey } from '/utils/supabase/info';
+import cwLogoImg from 'figma:asset/26b5a4fd9027610adb3ddb9ed89749cb683707dd.png';
 
-// ── Supabase browser client (Vite-injected, browser-safe configuration) ───────
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+// ── Supabase browser client ───────────────────────────────────────────────────
+// publicAnonKey is the JWT anon key — the only format Supabase Auth accepts.
+// The sb_publishable_ string is a Figma Make proxy key, NOT a valid JWT.
+const SUPABASE_URL = 'https://axntibrdivccycxdwlzk.supabase.co';
 
-let _client: SupabaseClient | null = null;
+// Persist on window so HMR module re-evaluations reuse the same GoTrueClient
+// and avoid the "Multiple GoTrueClient instances" warning.
+declare global { interface Window { __cr8w_supabase__?: SupabaseClient } }
+
 function client(): SupabaseClient {
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    throw new Error('Supabase browser configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
-  }
-  if (!_client) {
-    _client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  if (!window.__cr8w_supabase__) {
+    window.__cr8w_supabase__ = createClient(SUPABASE_URL, publicAnonKey, {
       auth: { persistSession: true, autoRefreshToken: true, storageKey: 'cr8w_supabase_auth' },
     });
   }
-  return _client;
+  return window.__cr8w_supabase__;
 }
 
 // ── Profiles ──────────────────────────────────────────────────────────────────
@@ -43,7 +42,7 @@ export const PROFILES = [
   { key: 'event-support', emoji: '🎪', display: 'Event Support',   role: 'Day-Of',          color: '#7A4A20', bg: '#FFF5EE', border: '#E8AF93' },
 ];
 
-// ── Sync helpers used by App.tsx (must be synchronous for initial render) ─────
+// ── Sync helpers used by App.tsx ──────────────────────────────────────────────
 export function isAuthenticated(): boolean {
   try {
     const raw = localStorage.getItem('cr8w_supabase_auth');
@@ -63,61 +62,32 @@ export async function signOut(): Promise<void> {
   try { localStorage.removeItem('cr8w_user_profile'); } catch {}
 }
 
+// ── Friendly error messages for common Supabase Auth codes ────────────────────
+function friendlyError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes('invalid login credentials'))  return 'Wrong email or password. Try again.';
+  if (m.includes('email not confirmed'))         return 'Check your email and click the confirmation link first, then sign in.';
+  if (m.includes('user already registered'))     return 'An account with that email already exists. Sign in instead.';
+  if (m.includes('for security purposes'))       return 'Too many attempts — wait a minute and try again.';
+  if (m.includes('rate limit'))                  return 'Too many attempts — wait a minute and try again.';
+  if (m.includes('signup disabled'))             return 'New registrations are currently closed.';
+  if (m.includes('user not found'))              return 'No account found with that email. Create one first.';
+  if (m.includes('password should be'))          return 'Password must be at least 6 characters.';
+  return msg;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 interface Props { onAuthenticated: (profileKey: string) => void; }
-type Mode = 'signin' | 'register' | 'reset';
+type Mode = 'signin' | 'register' | 'reset' | 'newpassword';
 
-function Screen({ children, landing }: { children: React.ReactNode; landing?: React.ReactNode }) {
+function Screen({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '40px 20px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg,#FAF6F2 0%,#F4EDE6 40%,#EDE4DA 100%)', padding: '24px 16px', fontFamily: 'var(--font-body,"Montserrat",sans-serif)' }}>
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(194,91,56,0.12) 0%,transparent 70%)' }} />
         <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(123,168,157,0.14) 0%,transparent 70%)' }} />
       </div>
-      <div className="cr8w-gate-shell" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: landing ? 960 : 420, display: 'flex', alignItems: 'center', gap: 40 }}>
-        {landing && <div className="cr8w-gate-landing" style={{ flex: 1, minWidth: 0 }}>{landing}</div>}
-        <div style={{ width: '100%', maxWidth: 420, flexShrink: 0, margin: landing ? undefined : '0 auto' }}>{children}</div>
-      </div>
-      <style>{`@media (max-width: 880px) { .cr8w-gate-shell { flex-direction: column; gap: 28px; } .cr8w-gate-landing { width: 100%; max-width: 520px; } }`}</style>
-    </div>
-  );
-}
-
-// ── Public landing: explains what Create Well is before any sign-in ───────────
-function Landing() {
-  const itemStyle: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'baseline', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.84rem', color: '#5A4A40', lineHeight: 1.55 };
-  const dotStyle: React.CSSProperties = { color: '#C25B38', fontWeight: 700 };
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-        <img src={cwLogoImg} alt="Create Well" style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 4px 16px rgba(194,91,56,0.2)' }} />
-        <div>
-          <div style={{ fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '2rem', fontWeight: 700, color: '#C25B38', lineHeight: 1 }}>Create Well</div>
-          <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.7rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
-        </div>
-      </div>
-      <p style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.95rem', color: '#3D3230', lineHeight: 1.7, margin: '0 0 14px' }}>
-        Create Well is the private home base of the Create Well co-creation collective — a small team
-        running creative-wellness experiments, events, and content together.
-      </p>
-      <p style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.84rem', color: '#5A4A40', lineHeight: 1.65, margin: '0 0 18px' }}>
-        The dashboard gathers the collective's week in one place — moves, flows, content, money,
-        and decisions — mirrored read-only from the team's Notion workspace. Each member signs in
-        with their own account. Members can optionally connect Google Calendar to see upcoming
-        collective events and sync events they choose to schedule; calendar access is used only
-        inside this dashboard, never sold or shared.
-      </p>
-      <div style={{ display: 'grid', gap: 8, marginBottom: 22 }}>
-        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>This Week</strong> — the collective's pulse: what's moving, what's resting.</span></div>
-        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Moves & Flows</strong> — active projects and recurring rhythms from Notion.</span></div>
-        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Content & Money</strong> — what's being made, and the collective's shared pots.</span></div>
-        <div style={itemStyle}><span style={dotStyle}>•</span><span><strong>Calendar sync</strong> — optional Google Calendar connection for collective events.</span></div>
-      </div>
-      <div style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.74rem', color: '#A08878' }}>
-        <a href="/privacy.html" style={{ color: '#C25B38', textDecoration: 'underline' }}>Privacy Policy</a>
-        {' · '}
-        <a href="/terms.html" style={{ color: '#C25B38', textDecoration: 'underline' }}>Terms of Service</a>
-      </div>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420 }}>{children}</div>
     </div>
   );
 }
@@ -133,37 +103,52 @@ const labelStyle: React.CSSProperties = {
 };
 
 export function AuthGate({ onAuthenticated }: Props) {
-  const [mode, setMode] = useState<Mode>('signin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw] = useState(false);
+  const [mode, setMode]               = useState<Mode>('signin');
+  const [email, setEmail]             = useState('');
+  const [password, setPassword]       = useState('');
+  const [showPw, setShowPw]           = useState(false);
+  const [newPw, setNewPw]             = useState('');
+  const [newPwConfirm, setNewPwConfirm] = useState('');
+  const [showNewPw, setShowNewPw]     = useState(false);
   const [displayName, setDisplayName] = useState('');
-  const [profile, setProfile] = useState('omar');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [shake, setShake] = useState(false);
+  const [profile, setProfile]         = useState('monny');
+  const [error, setError]             = useState('');
+  const [notice, setNotice]           = useState('');
+  const [busy, setBusy]               = useState(false);
+  const [shake, setShake]             = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
   const triggerShake = useCallback(() => {
     setShake(true); setTimeout(() => setShake(false), 550);
   }, []);
 
-  // On mount: if a valid session already exists, go straight in
   useEffect(() => {
     let active = true;
+
+    // Listen for PASSWORD_RECOVERY: fires when user arrives via a reset-password email link.
+    // Without this, the recovery token is silently dropped and the user can never set a new pw.
+    const { data: { subscription } } = client().auth.onAuthStateChange((event) => {
+      if (!active) return;
+      if (event === 'PASSWORD_RECOVERY') {
+        setCheckingSession(false);
+        setMode('newpassword');
+      }
+    });
+
+    // Check for an existing live session on mount.
     client().auth.getSession().then(({ data }) => {
       if (!active) return;
       const session = data.session;
       if (session) {
-        const key = session.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'omar';
+        const key = session.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
         localStorage.setItem('cr8w_user_profile', key);
         onAuthenticated(key);
       } else {
         setCheckingSession(false);
       }
     }).catch(() => { if (active) setCheckingSession(false); });
-    return () => { active = false; };
+
+    return () => { active = false; subscription.unsubscribe(); };
   }, [onAuthenticated]);
 
   async function handleSignIn(e: React.FormEvent) {
@@ -175,11 +160,11 @@ export function AuthGate({ onAuthenticated }: Props) {
     });
     setBusy(false);
     if (err || !data.session) {
-      setError(err?.message || 'Sign in failed — check your email and password.');
+      setError(friendlyError(err?.message ?? 'Sign in failed — check your email and password.'));
       triggerShake();
       return;
     }
-    const key = data.user?.user_metadata?.cr8w_profile ?? 'omar';
+    const key = data.user?.user_metadata?.cr8w_profile ?? 'monny';
     localStorage.setItem('cr8w_user_profile', key);
     onAuthenticated(key);
   }
@@ -195,37 +180,47 @@ export function AuthGate({ onAuthenticated }: Props) {
       options: { data: { cr8w_profile: profile, display_name: displayName.trim() } },
     });
     setBusy(false);
-    if (err) {
-      setError(err.message);
-      triggerShake();
-      return;
-    }
+    if (err) { setError(friendlyError(err.message)); triggerShake(); return; }
     localStorage.setItem('cr8w_user_profile', profile);
-    // If email confirmation is required, there's no session yet
     if (data.session) {
+      // Email confirmation is OFF — session returned immediately.
       onAuthenticated(profile);
     } else {
-      setNotice('Account created! Check your email to confirm, then sign in.');
+      // Email confirmation is ON — user must confirm before signing in.
+      setNotice('Account created! Check your email to confirm, then sign in here.');
       setMode('signin');
     }
   }
 
-  async function handleResetPassword(e: React.FormEvent) {
+  async function handleReset(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
     setBusy(true); setError(''); setNotice('');
     const { error: err } = await client().auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: window.location.origin,
     });
     setBusy(false);
-    if (err) {
-      setError(err.message);
-      triggerShake();
-      return;
-    }
-    setNotice('If an account exists for that email, a password reset link is on its way.');
+    if (err) { setError(friendlyError(err.message)); triggerShake(); return; }
+    setNotice('Reset link sent — check your inbox. Click the link, then set your new password here.');
     setMode('signin');
   }
+
+  // Called after user clicks the email reset link and arrives at this screen.
+  // Supabase has already set a recovery session; updateUser persists the new password.
+  async function handleSetNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPw.length < 6) { setError('Password must be at least 6 characters.'); triggerShake(); return; }
+    if (newPw !== newPwConfirm) { setError('Passwords do not match.'); triggerShake(); return; }
+    setBusy(true); setError(''); setNotice('');
+    const { data, error: err } = await client().auth.updateUser({ password: newPw });
+    setBusy(false);
+    if (err) { setError(friendlyError(err.message)); triggerShake(); return; }
+    const key = data.user?.user_metadata?.cr8w_profile ?? getStoredProfile() ?? 'monny';
+    localStorage.setItem('cr8w_user_profile', key);
+    onAuthenticated(key);
+  }
+
+  const isSubMode = mode === 'reset' || mode === 'newpassword';
 
   if (checkingSession) {
     return (
@@ -239,7 +234,7 @@ export function AuthGate({ onAuthenticated }: Props) {
   }
 
   return (
-    <Screen landing={<Landing />}>
+    <Screen>
       <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(14px)', borderRadius: 24, boxShadow: '0 8px 40px rgba(194,91,56,0.12),0 2px 8px rgba(0,0,0,0.06)', padding: '36px 32px 30px', border: '1px solid rgba(212,167,113,0.25)', animation: shake ? 'cr8w-shake 0.5s ease' : 'none' }}>
 
         {/* Brand */}
@@ -249,15 +244,31 @@ export function AuthGate({ onAuthenticated }: Props) {
           <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.7rem', color: '#A07060', letterSpacing: '0.12em', textTransform: 'uppercase', marginTop: 4 }}>CR8W Dashboard</div>
         </div>
 
-        {/* Mode toggle */}
-        <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(194,91,56,0.06)', borderRadius: 12, marginBottom: 22 }}>
-          {(['signin', 'register'] as Mode[]).map(m => (
-            <button key={m} type="button" onClick={() => { setMode(m); setError(''); setNotice(''); }}
-              style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.03em', background: mode === m ? '#C25B38' : 'transparent', color: mode === m ? '#fff' : '#A07060', transition: 'all 0.15s' }}>
-              {m === 'signin' ? 'Sign In' : 'Register'}
-            </button>
-          ))}
-        </div>
+        {/* Mode toggle — hidden for sub-flows */}
+        {!isSubMode && (
+          <div style={{ display: 'flex', gap: 4, padding: 4, background: 'rgba(194,91,56,0.06)', borderRadius: 12, marginBottom: 22 }}>
+            {(['signin', 'register'] as Mode[]).map(m => (
+              <button key={m} type="button" onClick={() => { setMode(m); setError(''); setNotice(''); }}
+                style={{ flex: 1, padding: '9px', borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.03em', background: mode === m ? '#C25B38' : 'transparent', color: mode === m ? '#fff' : '#A07060', transition: 'all 0.15s' }}>
+                {m === 'signin' ? 'Sign In' : 'Register'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Sub-flow headers */}
+        {mode === 'reset' && (
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.78rem', fontWeight: 700, color: '#C25B38', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Reset Password</div>
+            <div style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.73rem', color: '#A07060', marginTop: 4 }}>We&apos;ll email you a reset link.</div>
+          </div>
+        )}
+        {mode === 'newpassword' && (
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.78rem', fontWeight: 700, color: '#C25B38', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Set New Password</div>
+            <div style={{ fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.73rem', color: '#A07060', marginTop: 4 }}>Choose a password for your account.</div>
+          </div>
+        )}
 
         {notice && (
           <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(123,168,157,0.1)', border: '1px solid rgba(123,168,157,0.3)', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#3A7A3A', lineHeight: 1.5 }}>
@@ -265,74 +276,124 @@ export function AuthGate({ onAuthenticated }: Props) {
           </div>
         )}
 
-        <form onSubmit={mode === 'signin' ? handleSignIn : mode === 'register' ? handleRegister : handleResetPassword} noValidate>
-          {/* Register-only: display name */}
-          {mode === 'register' && (
+        {/* ── Set-new-password form (recovery flow) ── */}
+        {mode === 'newpassword' && (
+          <form onSubmit={handleSetNewPassword} noValidate>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Your Name</label>
-              <input value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Omar" autoFocus style={inputStyle}
-                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
-            </div>
-          )}
-
-          {/* Email */}
-          <div style={{ marginBottom: 14 }}>
-            <label style={labelStyle}>Email</label>
-            <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} placeholder="you@example.com" autoComplete="email" autoFocus={mode === 'signin'} style={inputStyle}
-              onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
-          </div>
-
-          {/* Password */}
-          {mode !== 'reset' && <div style={{ marginBottom: mode === 'register' ? 16 : 20 }}>
-            <label style={labelStyle}>Password</label>
-            <div style={{ position: 'relative' }}>
-              <input type={showPw ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder={mode === 'register' ? 'at least 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                style={{ ...inputStyle, paddingRight: 44, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
-                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
-              <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
-                {showPw ? '🙈' : '👁'}
-              </button>
-            </div>
-          </div>}
-
-          {/* Register-only: profile picker */}
-          {mode === 'register' && (
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Choose your profile</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {PROFILES.map(p => {
-                  const active = profile === p.key;
-                  return (
-                    <button key={p.key} type="button" onClick={() => setProfile(p.key)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${active ? p.border : 'var(--border-soft,#D6D1CA)'}`, background: active ? `${p.border}25` : 'transparent', transition: 'all 0.15s' }}>
-                      <span style={{ fontSize: '0.95rem' }}>{p.emoji}</span>
-                      <span style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.74rem', fontWeight: 700, color: active ? p.color : '#8A7060' }}>{p.display}</span>
-                    </button>
-                  );
-                })}
+              <label style={labelStyle}>New Password</label>
+              <div style={{ position: 'relative' }}>
+                <input type={showNewPw ? 'text' : 'password'} value={newPw} onChange={e => { setNewPw(e.target.value); setError(''); }}
+                  placeholder="at least 6 characters" autoComplete="new-password" autoFocus
+                  style={{ ...inputStyle, paddingRight: 44, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
+                  onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
+                <button type="button" onClick={() => setShowNewPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
+                  {showNewPw ? '🙈' : '👁'}
+                </button>
               </div>
             </div>
-          )}
-
-          {mode === 'signin' && (
-            <button type="button" onClick={() => { setMode('reset'); setError(''); setNotice(''); }} style={{ display: 'block', margin: '-6px 0 16px auto', background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
-              Forgot password?
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>Confirm Password</label>
+              <input type={showNewPw ? 'text' : 'password'} value={newPwConfirm} onChange={e => { setNewPwConfirm(e.target.value); setError(''); }}
+                placeholder="same password again" autoComplete="new-password"
+                style={{ ...inputStyle, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
+                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
+            </div>
+            {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
+            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+              {busy ? 'Saving…' : 'Set Password →'}
             </button>
-          )}
+          </form>
+        )}
 
-          {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
+        {/* ── Sign in / Register / Reset forms ── */}
+        {mode !== 'newpassword' && (
+          <form onSubmit={mode === 'signin' ? handleSignIn : mode === 'reset' ? handleReset : handleRegister} noValidate>
+            {/* Register-only: display name */}
+            {mode === 'register' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={labelStyle}>Your Name</label>
+                <input value={displayName} onChange={e => { setDisplayName(e.target.value); setError(''); }} placeholder="e.g. Monica" autoFocus style={inputStyle}
+                  onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
+              </div>
+            )}
 
-          <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
-            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign In →' : mode === 'register' ? 'Create Account →' : 'Send reset link →'}
-          </button>
-        </form>
+            {/* Email */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Email</label>
+              <input type="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} placeholder="you@example.com" autoComplete="email" autoFocus={mode === 'signin'} style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = 'rgba(212,167,113,0.4)'} />
+            </div>
 
-        <p style={{ textAlign: 'center', marginTop: 18, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', color: '#B09080', lineHeight: 1.5 }}>
-          {mode === 'signin'
-            ? <>New to the Well? <button type="button" onClick={() => { setMode('register'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Create an account</button></>
-            : <>Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Sign in</button></>}
-        </p>
+            {/* Password — hidden in reset mode */}
+            {mode !== 'reset' && (
+              <div style={{ marginBottom: mode === 'register' ? 16 : 20 }}>
+                <label style={labelStyle}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input type={showPw ? 'text' : 'password'} value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+                    placeholder={mode === 'register' ? 'at least 6 characters' : '••••••••'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                    style={{ ...inputStyle, paddingRight: 44, border: `1.5px solid ${error ? '#E05040' : 'rgba(212,167,113,0.4)'}` }}
+                    onFocus={e => e.currentTarget.style.borderColor = '#C25B38'} onBlur={e => e.currentTarget.style.borderColor = error ? '#E05040' : 'rgba(212,167,113,0.4)'} />
+                  <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: '#A07060', padding: 4 }}>
+                    {showPw ? '🙈' : '👁'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Register-only: profile picker */}
+            {mode === 'register' && (
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Choose your profile</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {PROFILES.map(p => {
+                    const active = profile === p.key;
+                    return (
+                      <button key={p.key} type="button" onClick={() => setProfile(p.key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', border: `1.5px solid ${active ? p.border : 'var(--border-soft,#D6D1CA)'}`, background: active ? `${p.border}25` : 'transparent', transition: 'all 0.15s' }}>
+                        <span style={{ fontSize: '0.95rem' }}>{p.emoji}</span>
+                        <span style={{ fontFamily: 'var(--font-label,"Blinker",sans-serif)', fontSize: '0.74rem', fontWeight: 700, color: active ? p.color : '#8A7060' }}>{p.display}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {error && <div style={{ marginBottom: 16, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.76rem', color: '#C03020', lineHeight: 1.4 }}>{error}</div>}
+
+            <button type="submit" disabled={busy} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: busy ? 'rgba(194,91,56,0.4)' : '#C25B38', color: '#fff', fontFamily: 'var(--font-display,"Fredoka",sans-serif)', fontSize: '1rem', fontWeight: 600, cursor: busy ? 'default' : 'pointer', boxShadow: busy ? 'none' : '0 4px 16px rgba(194,91,56,0.3)', transition: 'background 0.15s' }}>
+              {busy
+                ? (mode === 'signin' ? 'Signing in…' : mode === 'reset' ? 'Sending…' : 'Creating account…')
+                : (mode === 'signin' ? 'Sign In →' : mode === 'reset' ? 'Send Reset Link →' : 'Create Account →')}
+            </button>
+
+            {mode === 'signin' && (
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button type="button" onClick={() => { setMode('reset'); setError(''); setNotice(''); }}
+                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {mode === 'reset' && (
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button type="button" onClick={() => { setMode('signin'); setError(''); setNotice(''); }}
+                  style={{ background: 'none', border: 'none', color: '#A07060', cursor: 'pointer', fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', textDecoration: 'underline', padding: 0 }}>
+                  ← Back to sign in
+                </button>
+              </div>
+            )}
+          </form>
+        )}
+
+        {!isSubMode && (
+          <p style={{ textAlign: 'center', marginTop: 18, fontFamily: 'var(--font-body,"Montserrat",sans-serif)', fontSize: '0.72rem', color: '#B09080', lineHeight: 1.5 }}>
+            {mode === 'signin'
+              ? <>New to the Well? <button type="button" onClick={() => { setMode('register'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Create an account</button></>
+              : <>Already have an account? <button type="button" onClick={() => { setMode('signin'); setError(''); }} style={{ background: 'none', border: 'none', color: '#C25B38', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline', padding: 0 }}>Sign in</button></>}
+          </p>
+        )}
       </div>
 
       <style>{`@keyframes cr8w-shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-7px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(3px)} }`}</style>

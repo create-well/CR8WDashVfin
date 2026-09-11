@@ -3,8 +3,6 @@ import type {
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
   CoFlowDate, CoFlowCheckin, WellNote,
 } from '../app/components/api';
-import type { SyncFreshness } from '../app/components/api';
-import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
@@ -32,11 +30,8 @@ export interface DashboardPayload {
   coFlowDates: CoFlowDate[];
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
-  notionMirrors: NotionMirrors;
-  notionSources: NotionSourceMetadata[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
-  freshness: SyncFreshness;
   permissions: DashboardPermissions;
 }
 

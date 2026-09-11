@@ -29,7 +29,6 @@ const SYNC_KEYS = [
   "cr8w_coflow_checkins",
   "cr8w_well_notes",
   "cr8w_calendar_events",
-  "cr8w_notion_sync_meta",
 ] as const;
 
 function parseList(raw: any): any[] {
@@ -38,16 +37,6 @@ function parseList(raw: any): any[] {
     return typeof raw === "string" ? JSON.parse(raw) : Array.isArray(raw) ? raw : [];
   } catch {
     return [];
-  }
-}
-
-function parseObject(raw: any): Record<string, any> {
-  if (!raw) return {};
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
   }
 }
 
@@ -87,9 +76,8 @@ app.get("/make-server-8dcd9693/sync", async (c) => {
     // Build a lookup map from the single query result
     const map: Record<string, any[]> = {};
     for (const row of data || []) {
-      if (row.key !== "cr8w_notion_sync_meta") map[row.key] = parseList(row.value);
+      map[row.key] = parseList(row.value);
     }
-    const syncMeta = parseObject((data || []).find(row => row.key === "cr8w_notion_sync_meta")?.value);
 
     return c.json({
       tasks: map["cr8w_tasks"] || [],
@@ -106,12 +94,6 @@ app.get("/make-server-8dcd9693/sync", async (c) => {
       coflowCheckins: map["cr8w_coflow_checkins"] || [],
       wellNotes: map["cr8w_well_notes"] || [],
       calendarEvents: map["cr8w_calendar_events"] || [],
-      freshness: {
-        source: syncMeta.source === "notion" ? "notion" : "unknown",
-        mirrorUpdatedAt: typeof syncMeta.mirrorUpdatedAt === "string" ? syncMeta.mirrorUpdatedAt : null,
-        sourceLastEditedAt: typeof syncMeta.sourceLastEditedAt === "string" ? syncMeta.sourceLastEditedAt : null,
-        syncRunId: typeof syncMeta.syncRunId === "string" ? syncMeta.syncRunId : null,
-      },
     });
   } catch (e) {
     console.log("Sync error:", e);

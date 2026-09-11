@@ -5,16 +5,12 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
-import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
 } from '../app/components/data';
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
-import type { DashboardContextValue, DashboardPayload } from '../types/dashboard';
-import type { SyncFreshness } from '../app/components/api';
-import { useSync } from './SyncProvider';
-import { forwardRetry } from './retry';
+import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -36,7 +32,6 @@ interface DashboardProviderProps {
 }
 
 export function DashboardProvider({ children, onSignOut }: DashboardProviderProps) {
-  const { data: syncedData, syncStatus, lastSynced, retrySync: requestSync } = useSync();
   // ── Data state ───────────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState<Task[]>([]);
   const [stations, setStations] = useState<Station[]>(DEFAULT_STATIONS_MAPPED);
@@ -51,16 +46,14 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
-  const [notionMirrors, setNotionMirrors] = useState<NotionMirrors>({ people: [], flows: [], moves: [], content: [], money: [], engineeringDelivery: [] });
-  const [notionSources, setNotionSources] = useState<NotionSourceMetadata[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
-  const [freshness, setFreshness] = useState<SyncFreshness>({
-    source: 'unknown',
-    mirrorUpdatedAt: null,
-    sourceLastEditedAt: null,
-    syncRunId: null,
-  });
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const dataLoadedRef = useRef(false);
+  const silentFailCount = useRef(0);
+  const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const initialProfile = getStoredProfile() ?? 'monny';
@@ -91,26 +84,105 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     });
   }, []);
 
-  // SyncProvider owns polling; mirror data is projected into dashboard state here.
+  // ── Dedup system messages ────────────────────────────────────────────────────
+  function deduplicateSystemMessages(msgs: Message[]): Message[] {
+    const seen = new Map<string, Message>();
+    const result: Message[] = [];
+    for (const m of msgs) {
+      if (m.author === 'system') {
+        const key = m.content?.trim() || '';
+        const existing = seen.get(key);
+        if (existing) {
+          const existingTime = existing.created_at ? new Date(existing.created_at).getTime() : 0;
+          const currentTime = m.created_at ? new Date(m.created_at).getTime() : 0;
+          if (currentTime > existingTime) {
+            const idx = result.indexOf(existing);
+            if (idx >= 0) result[idx] = m;
+            seen.set(key, m);
+          }
+        } else {
+          seen.set(key, m);
+          result.push(m);
+        }
+      } else {
+        result.push(m);
+      }
+    }
+    return result;
+  }
+
+  // ── Sync polling ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!syncedData) return;
-    setTasks(syncedData.tasks || []);
-    setStations(syncedData.stations?.length ? syncedData.stations : DEFAULT_STATIONS_MAPPED);
-    setForum(syncedData.forum || []);
-    setMessages(syncedData.messages || []);
-    setBrainDumps(syncedData.braindumps || []);
-    if (syncedData.announcements?.length) setAnnouncements(syncedData.announcements);
-    setForumReplies(syncedData.forumReplies || []);
-    setWorkshops(syncedData.workshops || []);
-    setWorkshopPrograms(syncedData.workshopPrograms || []);
-    setWorkshopResources(syncedData.workshopResources || []);
-    setCoFlowDates(syncedData.coflowDates || []);
-    setCoFlowCheckins(syncedData.coflowCheckins || []);
-    setWellNotes(syncedData.wellNotes || []);
-    if (syncedData.notionMirrors) setNotionMirrors(syncedData.notionMirrors);
-    if (syncedData.notionSources) setNotionSources(syncedData.notionSources);
-    if (syncedData.freshness) setFreshness(syncedData.freshness);
-  }, [syncedData]);
+    // Use /api/dashboard (Notion-backed) as the primary sync source.
+    // Fallback: on error keep the last-good payload visible (stale state).
+    // Poll floor: 60s — respects the "no polling storms" constraint.
+    async function fetchSync(silent = false) {
+      try {
+        // Try Notion-backed /api/dashboard first; fall back to legacy KV sync
+        // on pure network failures (TypeError / AbortError) so local dev and
+        // environments where the Vercel function isn't deployed still work.
+        let data: Awaited<ReturnType<typeof api.fetchDashboard>>;
+        try {
+          data = await api.fetchDashboard();
+        } catch (primary) {
+          const isNetworkErr =
+            primary instanceof TypeError ||
+            (primary as Error)?.name === 'AbortError' ||
+            (primary as Error)?.message?.includes('timed out');
+          if (!isNetworkErr) throw primary;
+          console.warn('fetchDashboard unreachable, falling back to api.sync():', (primary as Error)?.message);
+          data = await api.sync();
+        }
+        setTasks(data.tasks || []);
+        setStations(data.stations?.length ? data.stations : DEFAULT_STATIONS_MAPPED);
+        setForum(data.forum || []);
+        setMessages(deduplicateSystemMessages(data.messages || []));
+        setBrainDumps(data.braindumps || []);
+        if (data.announcements?.length) setAnnouncements(data.announcements);
+        setForumReplies(data.forumReplies || []);
+        setWorkshops(data.workshops || []);
+        setWorkshopPrograms(data.workshopPrograms || []);
+        setWorkshopResources(data.workshopResources || []);
+        setCoFlowDates(data.coflowDates || []);
+        setCoFlowCheckins(data.coflowCheckins || []);
+        setWellNotes(data.wellNotes || []);
+        setSyncStatus('fresh');
+        setLastSynced(new Date());
+        silentFailCount.current = 0;
+        if (!dataLoadedRef.current) { dataLoadedRef.current = true; }
+      } catch (e) {
+        silentFailCount.current += 1;
+        console.error('Dashboard sync error:', e);
+        // Show stale data if we've ever loaded; fail hard only on first load.
+        if (!dataLoadedRef.current) {
+          dataLoadedRef.current = true;
+          setSyncStatus('failed');
+        } else if (silentFailCount.current >= 2) {
+          setSyncStatus('failed');
+        }
+      }
+    }
+
+    fetchSyncRef.current = fetchSync;
+    fetchSync(false);
+
+    // 60s floor, 5m ceiling — never hammer Notion or the API cache.
+    let pollInterval = 60_000;
+    const MAX_INTERVAL = 300_000;
+
+    function schedulePoll() {
+      pollRef.current = setTimeout(async () => {
+        await fetchSyncRef.current?.(true);
+        pollInterval = silentFailCount.current > 0
+          ? Math.min(pollInterval * 2, MAX_INTERVAL)
+          : 60_000;
+        schedulePoll();
+      }, pollInterval);
+    }
+    schedulePoll();
+
+    return () => { if (pollRef.current) clearTimeout(pollRef.current as any); };
+  }, []);
 
   // ── Wednesday reminder ───────────────────────────────────────────────────────
   const wednesdayReminderSent = useRef(false);
@@ -448,12 +520,22 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
 
     // Sync + auth
     retrySync() {
-      forwardRetry(requestSync);
+      fetchSyncRef.current?.(false);
     },
     async signOut() {
       await onSignOut();
     },
   };
+
+  // ── Compute stale status ─────────────────────────────────────────────────────
+  const STALE_THRESHOLD = 5 * 60 * 1000;
+  const computedSyncStatus: SyncStatus = syncStatus === 'failed'
+    ? 'failed'
+    : syncStatus === 'loading'
+    ? 'loading'
+    : lastSynced && (Date.now() - lastSynced.getTime() > STALE_THRESHOLD)
+    ? 'stale'
+    : 'fresh';
 
   const data: DashboardPayload = {
     tasks,
@@ -469,11 +551,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
-    notionMirrors,
-    notionSources,
-    syncStatus,
+    syncStatus: computedSyncStatus,
     lastSynced,
-    freshness,
     permissions: {
       careConsent: true,
     },

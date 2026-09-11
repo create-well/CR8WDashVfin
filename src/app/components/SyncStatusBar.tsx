@@ -20,7 +20,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced, freshness } = data;
+  const { syncStatus, lastSynced } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -30,21 +30,9 @@ export function SyncStatusBar() {
   }, []);
 
   const cfg = STATUS_CONFIG[syncStatus];
-  const mirrorUpdatedAt = freshness.mirrorUpdatedAt ? new Date(freshness.mirrorUpdatedAt) : null;
-  // Mirror writes run on a */15-minute cron (vercel.json). Stale must
-  // tolerate one full interval plus margin, or the banner shows between
-  // every pair of healthy ticks.
-  const MIRROR_STALE_MS = 20 * 60 * 1000;
-  const mirrorIsStale = mirrorUpdatedAt !== null &&
-    Date.now() - mirrorUpdatedAt.getTime() > MIRROR_STALE_MS;
-  const fetchLabel = lastSynced ? `Dashboard fetched ${relativeTime(lastSynced)}` : 'Dashboard not yet fetched';
-  const mirrorLabel = mirrorUpdatedAt
-    ? `Notion mirror written ${relativeTime(mirrorUpdatedAt)}`
-    : 'Notion mirror freshness unavailable';
-  const partialSourceFailure = Object.values(freshness.sourceFreshness ?? {}).some(source => source.status === 'error');
+  const timeLabel = lastSynced ? `Last synced ${relativeTime(lastSynced)}` : 'Not yet synced';
 
-  if (syncStatus === 'fresh' && !mirrorIsStale && !partialSourceFailure && freshness.source === 'notion' &&
-      lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
+  if (syncStatus === 'fresh' && lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
     return null;
   }
 
@@ -76,11 +64,8 @@ export function SyncStatusBar() {
           transition: 'background 0.3s',
         }}
       />
-      <span>{fetchLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
-      <span aria-label="Notion mirror freshness"> · {mirrorLabel}</span>
-      {mirrorIsStale && <span> · Mirror stale</span>}
-      {partialSourceFailure && <span> · Some sources failed; showing last good data</span>}
-      {(syncStatus === 'failed' || syncStatus === 'stale' || mirrorIsStale || partialSourceFailure) && (
+      <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
+      {(syncStatus === 'failed' || syncStatus === 'stale') && (
         <button
           onClick={() => actions.retrySync()}
           style={{

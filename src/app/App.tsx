@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { RouterProvider } from 'react-router';
 import { router } from './routes';
 import { DashboardProvider } from '../contexts/DashboardContext';
-import { SyncProvider } from '../contexts/SyncProvider';
-import { AuthGate, isAuthenticated, getStoredProfile, signOut } from './components/AuthGate';
+import { AuthGate, isAuthenticated, getStoredProfile } from './components/AuthGate';
 import { useThemeInit } from './components/ThemeProvider';
 import { GCAL_CLIENT_ID } from './components/data';
-import { Analytics } from '@vercel/analytics/react';
 
 // ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
 (function captureOAuthCode() {
@@ -27,7 +25,7 @@ import { Analytics } from '@vercel/analytics/react';
 
     import('/utils/supabase/info').then(({ projectId, publicAnonKey }) => {
       const host = window.location.hostname;
-      const onVercelOrDomain = host.endsWith('.vercel.app') || host === 'cr8w.com' || host === 'www.cr8w.com' || host === 'createwell.monnyfest.co' || host === 'localhost' || host === '127.0.0.1';
+      const onVercelOrDomain = host.endsWith('.vercel.app') || host === 'createwell.monnyfest.co' || host === 'localhost' || host === '127.0.0.1';
       const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
         ?? (onVercelOrDomain ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server');
       const serverUrl = `${apiBase}/gcal-token-exchange`;
@@ -125,26 +123,19 @@ export default function App() {
   }
 
   async function handleSignOut() {
+    const { signOut } = await import('./components/AuthGate');
     await signOut();
     setAuthed(false);
     window.location.reload();
   }
 
   if (!authed) {
-    return (
-      <>
-        <AuthGate onAuthenticated={handleAuthenticated} />
-        <Analytics />
-      </>
-    );
+    return <AuthGate onAuthenticated={handleAuthenticated} />;
   }
 
   return (
-    <SyncProvider>
-      <DashboardProvider onSignOut={handleSignOut}>
-        <RouterProvider router={router} />
-        <Analytics />
-      </DashboardProvider>
-    </SyncProvider>
+    <DashboardProvider onSignOut={handleSignOut}>
+      <RouterProvider router={router} />
+    </DashboardProvider>
   );
 }
