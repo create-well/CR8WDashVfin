@@ -46,6 +46,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<api.CalendarEventKV[]>([]);
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -146,6 +147,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
+        setCalendarEvents(await api.getCalendarEvents().catch(() => []));
         setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
@@ -551,6 +553,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
+    calendarEvents,
     syncStatus: computedSyncStatus,
     lastSynced,
     permissions: {

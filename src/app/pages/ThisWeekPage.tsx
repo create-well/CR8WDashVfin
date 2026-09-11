@@ -4,6 +4,7 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { HubView } from '../components/HubView';
 import { AddTaskModal } from '../components/AddTaskModal';
+import { TeamTaskScheduleModule } from '../../features/team/TeamTaskScheduleModule';
 
 const VIEW_ROUTE_MAP: Record<string, string> = {
   hub: '/',
@@ -66,6 +67,20 @@ export function ThisWeekPage() {
         coFlowCheckins={data.coFlowCheckins}
         actionItems={data.tasks}
         stations={data.stations}
+      />
+      <TeamTaskScheduleModule
+        tasks={data.tasks}
+        calendarEvents={data.calendarEvents}
+        teamMembers={[
+          { id: 'monny', name: 'Monny' },
+          { id: 'sunshine', name: 'Sunshine' },
+          { id: 'bingle', name: 'Bingle' },
+          { id: 'event-support', name: 'Event support' },
+        ]}
+        onCreateTask={actions.addTask}
+        onUpdateTask={actions.updateTask}
+        onScheduleTask={(task, start) => actions.updateTask(task.id, { due_date: start })}
+        onOpenCalendar={() => window.open('https://calendar.google.com', '_blank', 'noopener,noreferrer')}
       />
       {showAddTask && (
         <AddTaskModal
