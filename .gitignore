@@ -13,3 +13,9 @@ coverage/
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# tool/session scratch
+.claude/
+.manus-transfer/
+.plugin-builder-tmp/
+.deploy-tmp/
