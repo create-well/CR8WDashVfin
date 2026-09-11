@@ -16,6 +16,6 @@ updates:
       - dependency-name: npm:undici
         versions: ['<=5.28.4']
       - dependency-name: path-to-regexp
-        versions: ['>=4.0.0 <6.3.0']
+        versions: ['6.1.0']
       - dependency-name: npm:path-to-regexp
-        versions: ['>=4.0.0 <6.3.0']
+        versions: ['6.1.0']
