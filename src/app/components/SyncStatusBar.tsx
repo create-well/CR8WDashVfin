@@ -31,8 +31,12 @@ export function SyncStatusBar() {
 
   const cfg = STATUS_CONFIG[syncStatus];
   const mirrorUpdatedAt = freshness.mirrorUpdatedAt ? new Date(freshness.mirrorUpdatedAt) : null;
+  // Mirror writes run on a */15-minute cron (vercel.json). Stale must
+  // tolerate one full interval plus margin, or the banner shows between
+  // every pair of healthy ticks.
+  const MIRROR_STALE_MS = 20 * 60 * 1000;
   const mirrorIsStale = mirrorUpdatedAt !== null &&
-    Date.now() - mirrorUpdatedAt.getTime() > 10 * 60 * 1000;
+    Date.now() - mirrorUpdatedAt.getTime() > MIRROR_STALE_MS;
   const fetchLabel = lastSynced ? `Dashboard fetched ${relativeTime(lastSynced)}` : 'Dashboard not yet fetched';
   const mirrorLabel = mirrorUpdatedAt
     ? `Notion mirror written ${relativeTime(mirrorUpdatedAt)}`

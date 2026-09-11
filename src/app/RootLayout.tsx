@@ -17,9 +17,11 @@ export function RootLayout() {
   const navigate = useNavigate();
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showDomainBanner, setShowDomainBanner] = useState(() => {
-    const isCustomDomain = window.location.hostname === 'createwell.monnyfest.co';
+    // Only nudge when viewing through a Vercel direct link; any real
+    // domain (cr8w.com, future domains) is already the right address.
+    const isDirectLink = window.location.hostname.endsWith('.vercel.app');
     const dismissed = sessionStorage.getItem('cr8w_domain_banner_dismissed');
-    return !isCustomDomain && !dismissed;
+    return isDirectLink && !dismissed;
   });
   const [showAddTask, setShowAddTask] = useState(false);
 
