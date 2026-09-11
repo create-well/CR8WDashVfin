@@ -6,6 +6,7 @@ import { SyncProvider } from '../contexts/SyncProvider';
 import { AuthGate, isAuthenticated, getStoredProfile, signOut } from './components/AuthGate';
 import { useThemeInit } from './components/ThemeProvider';
 import { GCAL_CLIENT_ID } from './components/data';
+import { Analytics } from '@vercel/analytics/react';
 
 // ── Google Calendar OAuth: capture auth code at module-eval time ──────────────
 (function captureOAuthCode() {
@@ -130,13 +131,19 @@ export default function App() {
   }
 
   if (!authed) {
-    return <AuthGate onAuthenticated={handleAuthenticated} />;
+    return (
+      <>
+        <AuthGate onAuthenticated={handleAuthenticated} />
+        <Analytics />
+      </>
+    );
   }
 
   return (
     <SyncProvider>
       <DashboardProvider onSignOut={handleSignOut}>
         <RouterProvider router={router} />
+        <Analytics />
       </DashboardProvider>
     </SyncProvider>
   );
