@@ -3,6 +3,11 @@ packages:
 
 overrides:
   vite: 6.4.3
+  # Security: @vercel/node still pins vulnerable undici 5.28.4 and
+  # path-to-regexp 6.1.0 (4 high-severity advisories). Build/dev-time only;
+  # production functions are compiled by Vercel's own toolchain.
+  undici: '>=6.27.0'
+  path-to-regexp: '>=6.3.0'
 
 allowBuilds:
   '@tailwindcss/oxide': true
