@@ -6,5 +6,8 @@ updates:
       interval: weekly
     ignore:
       - dependency-name: esbuild
+        versions: ['<0.28.1']
       - dependency-name: undici
+        versions: ['<=8.10.2']
       - dependency-name: path-to-regexp
+        versions: ['<8.4.3']
