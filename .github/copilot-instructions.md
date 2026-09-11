@@ -8,8 +8,10 @@ Vercel serverless API, Supabase storage, Notion as the operational source of tru
 **Notion writes. Supabase remembers. cr8w.com reads.** The dashboard must never
 become a second operational write surface. Never mutate Notion data or schema
 without explicit approval, and never add a new database or a second source of
-truth. All record edits happen in Notion; the sync copies them into a Supabase
-KV mirror (`kv_store_8dcd9693`).
+truth. Edits to Notion-mirrored records happen in Notion; the sync copies them
+into a Supabase KV mirror (`kv_store_8dcd9693`). The catch-all API does still
+write non-Notion data (forum replies, settings, calendar events, invite counts,
+and other KV resources) — this rule scopes to Notion-owned records.
 
 Other standing rules (from `.handoff/CONTEXT.md`): work on a feature branch,
 preserve existing user changes, keep changes small and independently verifiable,
@@ -31,12 +33,14 @@ Package manager is **pnpm** (pinned via `packageManager: pnpm@11.24.0`; CI runs
 | Node test runner (.ts) | `pnpm test:ts` → `node --experimental-strip-types --test tests/*.test.ts` |
 | Single node test | `node --test tests/<file>.test.mjs` or `node --experimental-strip-types --test tests/<file>.test.ts` |
 | E2E (Playwright, chromium) | `pnpm test:e2e` (auto-starts Vite on port 4173) |
-| Full CI-equivalent gate | `pnpm check` = node tests + TS tests + typecheck + build |
+| Most of the CI gate | `pnpm check` = node tests + TS tests + typecheck + build (does **not** run Vitest) |
+| Full CI gate | `pnpm test && pnpm check` (CI runs Vitest in addition to `check`) |
 
 There are three separate test systems — Vitest (component/unit, jsdom), Node's
 built-in runner (`.mjs` and stripped-type `.ts` contract/gate tests in
 `tests/`), and Playwright (`e2e/`). Match new tests to the system the
-neighboring tests use. The repo has no ESLint config; `pnpm check` is the gate.
+neighboring tests use. The repo has no ESLint config. `pnpm check` omits
+Vitest, so the full CI-equivalent gate is `pnpm test && pnpm check`.
 Vite is pinned to 6.4.3 via `pnpm.overrides` — do not bump it casually.
 
 ## High-level architecture
@@ -62,7 +66,8 @@ Vite is pinned to 6.4.3 via `pnpm.overrides` — do not bump it casually.
 - `api/server/[[...path]].ts` is a Vercel catch-all: `req.query.path` holds the
   route segments (`/api/server/sync` → `['sync']`). Auth is Bearer-token based:
   the Supabase publishable key (hash-login sessions) or a verified Supabase user
-  JWT; requests fail closed when a publishable key is configured.
+  JWT; requests fail closed when a publishable key is configured. Exception:
+  the `health` route is intentionally public.
 - `api/notion-webhook.ts` receives Notion webhooks (verification token stashed
   in KV for operator retrieval).
 
