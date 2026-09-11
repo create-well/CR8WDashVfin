@@ -132,7 +132,8 @@ calendar warning for `not_configured`, `never_synced`, `error`, or stale
 success. The existing Retry button still retries the dashboard read; it must
 not imply that it triggers the protected calendar refresh.
 
-`CalendarCard` displays connector state near the shared-calendar controls:
+The live shared-calendar surface in `HubView` displays connector state near the
+shared-calendar controls:
 
 - `not_configured`: explain that the calendar owner must provide the secret
   iCal address; disable the refresh button.
@@ -144,8 +145,12 @@ not imply that it triggers the protected calendar refresh.
 - stale `ok`: show the last successful time with a stale warning.
 
 The shared-calendar refresh uses the existing authenticated API client rather
-than duplicating hostname and authorization logic in the component. Personal
-Google OAuth, personal event visibility, and token storage are out of scope.
+than duplicating hostname and authorization logic in the component. The
+dashboard projection passes `calendarEvents` and `calendarSync` through
+`DashboardContext` to `ThisWeekPage` and `HubView`; `HubView` does not make a
+second calendar read. The currently unused modular `CalendarCard` is out of
+scope. Personal Google OAuth, personal event visibility, and token storage are
+also out of scope.
 
 ## Error Handling
 
