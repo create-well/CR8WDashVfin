@@ -7,7 +7,13 @@ updates:
     ignore:
       - dependency-name: esbuild
         versions: ['<0.28.1']
+      - dependency-name: npm:esbuild
+        versions: ['<0.28.1']
       - dependency-name: undici
         versions: ['<=8.10.2']
+      - dependency-name: npm:undici
+        versions: ['<=8.10.2']
       - dependency-name: path-to-regexp
+        versions: ['<8.4.3']
+      - dependency-name: npm:path-to-regexp
         versions: ['<8.4.3']
