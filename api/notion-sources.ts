@@ -6,7 +6,7 @@ export const NOTION_SOURCES = {
     visible: true,
     searchable: true,
     typedProperties: true,
-    displayFields: ['Name', 'Role', 'Status'],
+    displayFields: ['Name', 'Role', 'Pathway Stage'],
     sensitivity: 'team' as const,
   },
   flows: {
@@ -16,7 +16,7 @@ export const NOTION_SOURCES = {
     visible: true,
     searchable: true,
     typedProperties: true,
-    displayFields: ['Name', 'Status', 'Owner'],
+    displayFields: ['Name', 'Status', 'Flow Keeper'],
     sensitivity: 'team' as const,
   },
   moves: {
@@ -36,7 +36,7 @@ export const NOTION_SOURCES = {
     visible: true,
     searchable: true,
     typedProperties: true,
-    displayFields: ['Name', 'Status', 'Owner'],
+    displayFields: ['Name', 'Status', 'Content Type'],
     sensitivity: 'team' as const,
   },
   money: {
