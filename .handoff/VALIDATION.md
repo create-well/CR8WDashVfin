@@ -87,3 +87,12 @@ Data-layer verification on production `axntibrdivccycxdwlzk` via Supabase MCP SQ
 - Authorized dry-run with the rotated operator token (read from `.env.local`): `ok: true`, `writer: "none"`, 25 records across 6 sources, `validationErrors: []`. Rotated token works; pipeline healthy against current Notion state.
 - Unauthenticated `GET /api/dashboard-sync` returns HTTP 401 — fail-closed as designed.
 - Post-atomic rollback baseline captured: `.backups/backup-20260910T234305Z` (gitignored), via new `scripts/capture-rollback-backup.mjs --from-json` mode (commit `500c0d9`) fed by a trusted MCP SQL export, because the rotated service key is unavailable locally. Rollback gate: PASS, 7 files, 6 snapshots. This baseline sits between the manual atomic run and the first atomic cron — it is the atomic-era rollback point.
+
+## Freshness UX Finalization — 2026-09-10 ~18:00 local (Kimi session)
+
+Live logged-in walkthrough of `https://www.cr8w.com` surfaced two usability defects; both fixed in `1730888`, deployed, and re-verified live:
+
+- **Mirror-stale threshold vs cron cadence.** `SyncStatusBar` flagged the mirror stale after 10 minutes while the cron writes every 15, so "Mirror stale" + Retry showed between every pair of healthy ticks. Threshold now 20 minutes (one full interval plus margin). Live result: status bar fully hidden in the all-healthy state.
+- **Custom-domain banner on the custom domain.** `RootLayout` hardcoded `createwell.monnyfest.co` as the custom domain, so the "viewing via the direct link" banner rendered on `www.cr8w.com` itself. Condition inverted: banner now shows only on `*.vercel.app` direct links. Also updated the WelcomeModal iPhone install steps to `www.cr8w.com`.
+- Env/connectors audit: all required Vercel production vars present (flag, `GCAL_CLIENT_SECRET`, `SUPABASE_JWKS_URL` refreshed same day); rotated operator token + Notion key verified working via dry-run. Nothing needed overriding — do not rotate working credentials.
+- Local vitest/typecheck could not run (load avg 30-41, Docker pegged; the documented environment limitation). e2e stale fixture uses a day-old timestamp, unaffected. Vercel cloud build passed and is the verification gate.
