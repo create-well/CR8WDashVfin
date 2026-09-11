@@ -46,6 +46,7 @@ export function TopHeroCards({ actionItems, stations, kvCalEvents, onNavigate, o
   const assignedRoles = ['sunshine', 'monny', 'bingle'].filter(p => stations.some(s => s.owner === p));
   const rolesLabel = assignedRoles.length >= 3 ? 'roles assigned' : 'needs update';
   const daysToLaunch = getDaysToLaunch();
+  const hasLaunched = daysToLaunch < 0;
 
   const cardBase: React.CSSProperties = {
     borderRadius: 12, padding: 12, background: '#fff',
@@ -152,7 +153,7 @@ export function TopHeroCards({ actionItems, stations, kvCalEvents, onNavigate, o
           fontSize: '1.2rem', fontWeight: 800, color: 'var(--cr8w-text, #2D2438)',
           fontFamily: "var(--font-display)", lineHeight: 1.1,
           marginTop: 1, marginBottom: 1,
-        }}>{daysToLaunch} days</div>
+        }}>{hasLaunched ? `+${Math.abs(daysToLaunch)} days live` : `${daysToLaunch} days`}</div>
       </MiniCard>
     </div>
   );

@@ -69,8 +69,8 @@ export function TaskOverview({
       )}
 
       <div className="geyser-big-countdown">
-        <div className="gbc-num">{daysToLaunch}</div>
-        <div className="gbc-label">days until<br />April 15, 2026</div>
+        <div className="gbc-num">{daysToLaunch < 0 ? `+${Math.abs(daysToLaunch)}` : daysToLaunch}</div>
+        <div className="gbc-label">{daysToLaunch < 0 ? 'days since' : 'days until'}<br />April 15, 2026</div>
       </div>
 
       {/* Key Dates mini-timeline */}
