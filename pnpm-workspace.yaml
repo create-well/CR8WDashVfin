@@ -3,8 +3,8 @@ packages:
 
 overrides:
   vite: 6.4.3
-  '@supabase/auth-js': '>=2.70.0'
-  ajv: '>=8.18.0'
+  '@supabase/auth-js': 2.70.0
+  ajv: 8.18.0
   # Security: @vercel/node still pins vulnerable undici 5.28.4 and
   # path-to-regexp 6.1.0 (4 high-severity advisories). Build/dev-time only;
   # production functions are compiled by Vercel's own toolchain.
