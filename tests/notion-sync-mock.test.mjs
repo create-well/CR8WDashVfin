@@ -1,12 +1,35 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import { startMockNotionServer, mockNotionUrl } from './mock-notion-database.mjs';
 
-function runWorker(env) {
+const repoRoot = new URL('..', import.meta.url).pathname;
+
+function resolveWorkerCommand() {
+  const candidates = [
+    { entrypoint: 'scripts/notion-sync-worker.mjs', nodeArgs: [] },
+    { entrypoint: 'scripts/notion-sync-worker.js', nodeArgs: [] },
+    { entrypoint: 'scripts/notion-sync-worker.ts', nodeArgs: ['--experimental-strip-types'] },
+  ];
+
+  for (const candidate of candidates) {
+    if (!existsSync(path.join(repoRoot, candidate.entrypoint))) continue;
+    if (candidate.nodeArgs.includes('--experimental-strip-types')
+      && !process.allowedNodeEnvironmentFlags.has('--experimental-strip-types')) {
+      return { skipReason: 'Notion sync worker requires --experimental-strip-types, which this Node runtime does not support.' };
+    }
+    return candidate;
+  }
+
+  return { skipReason: 'No notion sync worker entrypoint exists in this repository checkout.' };
+}
+
+function runWorker(env, worker) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--experimental-strip-types', 'scripts/notion-sync-worker.ts', '--dry-run', '--limit=1'], {
-      cwd: new URL('..', import.meta.url).pathname,
+    const child = spawn(process.execPath, [...worker.nodeArgs, worker.entrypoint, '--dry-run', '--limit=1'], {
+      cwd: repoRoot,
       env: { ...process.env, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
@@ -19,10 +42,16 @@ function runWorker(env) {
   });
 }
 
-test('dry-run syncs one normalized mock page from each source without writes', async () => {
+test('dry-run syncs one normalized mock page from each source without writes', async (t) => {
+  const worker = resolveWorkerCommand();
+  if ('skipReason' in worker) {
+    t.skip(worker.skipReason);
+    return;
+  }
+
   const server = await startMockNotionServer();
   try {
-    const result = await runWorker({ NOTION_API_KEY: 'mock-notion-key', NOTION_API_URL: mockNotionUrl(server) });
+    const result = await runWorker({ NOTION_API_KEY: 'mock-notion-key', NOTION_API_URL: mockNotionUrl(server) }, worker);
     assert.equal(result.code, 0, result.stderr);
     const summary = JSON.parse(result.stdout.trim());
     assert.equal(summary.mode, 'dry-run');
