@@ -5,6 +5,8 @@ updates:
     schedule:
       interval: weekly
     ignore:
+      # Keep both bare and npm:-prefixed names because security alerts have
+      # surfaced with both identifier styles across Dependabot runs.
       - dependency-name: esbuild
         versions: ['<0.28.1']
       - dependency-name: npm:esbuild
