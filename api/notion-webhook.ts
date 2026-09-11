@@ -6,6 +6,7 @@ import { ENABLED_NOTION_SOURCES, type NotionSourceConfig, type NotionSourceKey }
 
 const TABLE = 'kv_store_8dcd9693';
 const DEBOUNCE_KEY = 'cr8w_notion_webhook_last_run';
+const VERIFICATION_KEY = 'cr8w_notion_webhook_verification';
 const DEBOUNCE_MS = 20_000;
 const LOG_PREFIX = '[notion-webhook]';
 
@@ -58,6 +59,21 @@ async function writeLastRun(db: SupabaseClient, ranAt: string): Promise<void> {
   if (error) throw new Error(`Webhook debounce write failed: ${error.code ?? 'unknown'}`);
 }
 
+/**
+ * Stashes the one-time subscription verification token in KV so an operator
+ * can retrieve it when runtime logs are unreachable. The token doubles as the
+ * HMAC signing secret for event deliveries, so it must land in
+ * NOTION_WEBHOOK_SECRET after the subscription is verified. This key is not
+ * part of the public dashboard-sync read set.
+ */
+async function writeVerificationToken(db: SupabaseClient, token: string): Promise<void> {
+  const { error } = await db.from(TABLE).upsert({
+    key: VERIFICATION_KEY,
+    value: JSON.stringify({ token, receivedAt: new Date().toISOString() }),
+  });
+  if (error) throw new Error(`Webhook verification stash failed: ${error.code ?? 'unknown'}`);
+}
+
 function normalizeDataSourceId(id: string): string {
   const hex = id.toLowerCase().replace(/-/g, '');
   return hex.length === 32
@@ -107,10 +123,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Subscription verification handshake: Notion posts a verification_token when
-  // the subscription is created. Log it for operator retrieval from runtime logs;
-  // never write it to the KV mirror.
+  // the subscription is created. Log it AND stash it in KV so the operator can
+  // retrieve it even when runtime logs are unreachable. The KV write is
+  // best-effort: a stash failure must not fail the handshake Notion waits on.
   if (typeof body.verification_token === 'string' && body.verification_token) {
     console.log(`${LOG_PREFIX} verification_token=${body.verification_token}`);
+    try {
+      await writeVerificationToken(database(), body.verification_token);
+    } catch (error) {
+      console.log(`${LOG_PREFIX} verification stash failed: ${error instanceof Error ? error.message : 'unknown'}`);
+    }
     res.status(200).json({ ok: true, received: 'verification_token' });
     return;
   }

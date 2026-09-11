@@ -87,10 +87,34 @@ describe('Notion webhook verification handshake', () => {
     logSpy.mockRestore();
   });
 
-  it('does not write the verification token to the KV mirror', async () => {
+  it('stashes the verification token in KV and still returns 200', async () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    await handler(stubRequest({ verification_token: 'tok-abc-123' }, { sign: false }) as never, stubResponse() as never);
-    expect(kvStore.size).toBe(0);
+    const res = stubResponse();
+
+    await handler(stubRequest({ verification_token: 'secret_tok-xyz' }, { sign: false }) as never, res as never);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toMatchObject({ ok: true });
+    const stashed = kvStore.get('cr8w_notion_webhook_verification');
+    expect(stashed).toBeTruthy();
+    const parsed = JSON.parse(stashed!);
+    expect(parsed.token).toBe('secret_tok-xyz');
+    expect(typeof parsed.receivedAt).toBe('string');
+    expect(Number.isFinite(Date.parse(parsed.receivedAt))).toBe(true);
+    logSpy.mockRestore();
+  });
+
+  it('still returns 200 when the KV stash write fails', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_SECRET_KEY;
+    const res = stubResponse();
+
+    await handler(stubRequest({ verification_token: 'tok-abc-123' }, { sign: false }) as never, res as never);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toMatchObject({ ok: true, received: 'verification_token' });
     logSpy.mockRestore();
   });
 });
