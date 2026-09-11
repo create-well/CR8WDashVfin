@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   PERSONS, MILESTONES, GUEST_JOURNEY,
-  getDaysToLaunch, capitalize, formatTimestamp,
+  capitalize, formatTimestamp,
   PHASE_TAGS, PHASE_META,
   type NoteItem,
 } from './data';
@@ -9,6 +9,7 @@ import type { Task, Station, ForumPost, Announcement, CalendarEventKV } from './
 import type { ForumReply as ApiForumReply, InviteCounts } from './api';
 import * as api from './api';
 import { HowWeFlowReference } from './HowWeFlowReference';
+import { getGeyserCountdown } from './geyserCountdown';
 import { StationsList } from '../../features/geyser/components/StationsList';
 import { TaskList } from '../../features/geyser/components/TaskList';
 import { ForumSection } from '../../features/geyser/components/ForumSection';
@@ -92,10 +93,10 @@ export function GeyserView({
       .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
   }, []);
 
-  const daysToLaunch = getDaysToLaunch();
-  const hasLaunched = daysToLaunch < 0;
-  const launchDayCount = Math.abs(daysToLaunch);
-  const launchDayDisplay = hasLaunched ? `+${launchDayCount}` : `${launchDayCount}`;
+  const geyserCountdown = getGeyserCountdown();
+  const hasLaunched = geyserCountdown.hasLaunched;
+  const launchDayDisplay = geyserCountdown.display;
+  const launchDayLabel = geyserCountdown.label;
   const stationList = stations;
   const confirmedStations = stationList.filter(s => s.status === 'Confirmed').length;
   const highPriority = actionItems.filter(t => t.priority === 'high' && t.status !== 'done').length;
@@ -686,7 +687,7 @@ export function GeyserView({
         <div className="geyser-header-info">
           <div className="geyser-header-countdown">
             <span className="geyser-countdown-num">{launchDayDisplay}</span>
-            <span className="geyser-countdown-label">{hasLaunched ? 'days since launch' : 'days til we go live'}</span>
+            <span className="geyser-countdown-label">{launchDayLabel}</span>
           </div>
         </div>
       </div>
