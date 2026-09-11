@@ -171,6 +171,7 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
 }
 
 export interface CalendarEventKV {
@@ -182,6 +183,16 @@ export interface CalendarEventKV {
   description: string;
   creator: string;
   synced_at?: string;
+}
+
+export interface CalendarSyncState {
+  configured: boolean;
+  status: 'not_configured' | 'never_synced' | 'ok' | 'error';
+  lastAttemptAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  recordCount: number;
+  stale: boolean;
+  errorCode?: 'fetch_failed' | 'parse_failed' | 'storage_failed' | 'unknown';
 }
 
 export interface ParkingLotItem {
@@ -212,6 +223,8 @@ export interface DashboardPayload {
   coFlowDates: CoFlowDate[];
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
+  calendarEvents: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
   syncStatus: SyncStatus;
   lastSynced: Date | null;
   permissions: DashboardPermissions;

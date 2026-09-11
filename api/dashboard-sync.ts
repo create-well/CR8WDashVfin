@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ENABLED_NOTION_SOURCES, publicSourceMetadata, type NotionPropertySensitivity, type NotionSourceKey } from './notion-sources.js';
+import { deriveCalendarSyncState } from './calendar-sync-health.js';
 
 const TABLE = 'kv_store_8dcd9693';
 const OPERATIONAL_KEYS = [
@@ -8,7 +9,7 @@ const OPERATIONAL_KEYS = [
   'cr8w_braindumps', 'cr8w_announcements', 'cr8w_forum_replies',
   'cr8w_workshops', 'cr8w_workshop_programs', 'cr8w_workshop_resources',
   'cr8w_coflow_dates', 'cr8w_coflow_checkins', 'cr8w_well_notes',
-  'cr8w_calendar_events', 'cr8w_notion_sync_meta',
+  'cr8w_calendar_events', 'cr8w_calendar_sync_meta', 'cr8w_notion_sync_meta',
 ];
 const MIRROR_KEYS = ENABLED_NOTION_SOURCES.map(([source]) => `cr8w_notion_mirror_${source}`);
 const KEYS = [...OPERATIONAL_KEYS, ...MIRROR_KEYS];
@@ -143,6 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const values = Object.fromEntries((data ?? []).map((row) => [row.key, row.value]));
     const freshness = parseObject(values.cr8w_notion_sync_meta);
     const sourceFreshness = parseObject(freshness.sourceFreshness);
+    const calendarEvents = parseList(values.cr8w_calendar_events);
     const readableSources = ENABLED_NOTION_SOURCES.filter(([source]) => capabilities[source].restricted);
     const mirrors = Object.fromEntries(
       ENABLED_NOTION_SOURCES.map(([source]) => [
@@ -166,7 +168,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowDates: parseList(values.cr8w_coflow_dates),
       coflowCheckins: parseList(values.cr8w_coflow_checkins),
       wellNotes: parseList(values.cr8w_well_notes),
-      calendarEvents: parseList(values.cr8w_calendar_events),
+      calendarEvents,
+      calendarSync: deriveCalendarSyncState({
+        configured: Boolean(process.env.CR8W_ICAL_URL),
+        metadata: values.cr8w_calendar_sync_meta,
+        recordCount: calendarEvents.length,
+      }),
       notionMirrors: mirrors,
       notionSources,
       freshness: {

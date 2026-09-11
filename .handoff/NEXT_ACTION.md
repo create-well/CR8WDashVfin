@@ -1,5 +1,23 @@
 # Next Action
 
+## Shared Calendar Connector — 2026-09-11
+
+Implementation and local validation are complete. The only production unblock
+is a calendar-owner action:
+
+1. Obtain the shared calendar's **Secret address in iCal format** through a
+   secure channel.
+2. Configure it as the server-only `CR8W_ICAL_URL` production environment
+   variable and redeploy.
+3. Run `POST /api/server/calendar-ical-sync` with an authenticated dashboard
+   session.
+4. Verify `/api/dashboard-sync` reports `calendarSync.status: "ok"`, a current
+   `lastSuccessfulSyncAt`, and a `recordCount` equal to `calendarEvents.length`.
+5. Check the This Week calendar card on `www.cr8w.com`.
+
+Do not paste the iCal URL into source, handoff files, logs, or client-side
+configuration.
+
 ## Atomic RPC graduated — 2026-09-10 ~16:39 local (current state)
 
 Production sync now writes through `public.cr8w_publish_notion_snapshot` (one transaction) with `CR8W_ATOMIC_RPC_ENABLED=true`. Full evidence in `STATE.md` under "Atomic RPC in Production". Operator token was rotated with user approval — read the current value from `.env.local`, not from any older note.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bearerToken, canReadSource, sourceCapabilities } from '../dashboard-sync';
+import { deriveCalendarSyncState } from '../calendar-sync-health';
 
 describe('dashboard source authorization', () => {
   it('parses only a well-formed bearer token', () => {
@@ -7,6 +8,24 @@ describe('dashboard source authorization', () => {
     expect(bearerToken('bearer abc123')).toBe('abc123');
     expect(bearerToken('Basic abc123')).toBeNull();
     expect(bearerToken(undefined)).toBeNull();
+  });
+
+  describe('calendar dashboard state', () => {
+    it('derives count from the events returned by the same response', () => {
+      const events = [{ id: 'one' }, { id: 'two' }];
+      const state = deriveCalendarSyncState({
+        configured: true,
+        metadata: {
+          lastAttemptAt: '2026-09-11T12:00:00.000Z',
+          lastSuccessfulSyncAt: '2026-09-11T12:00:00.000Z',
+          lastOutcome: 'ok',
+        },
+        recordCount: events.length,
+        now: Date.parse('2026-09-11T13:00:00.000Z'),
+      });
+
+      expect(state).toMatchObject({ status: 'ok', recordCount: 2, stale: false });
+    });
   });
 
   it('fails closed for restricted sources without a validated user', () => {

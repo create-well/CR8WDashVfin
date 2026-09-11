@@ -16,6 +16,12 @@ Create Well team: Sunshine, Bingle, and Monny, with Omar as podcast tech anchor.
 
 Current stack: Vite, React, TypeScript, React Router, Tailwind/PostCSS, Supabase, Vercel. Current route data flows through `src/app/components/api.ts`, `src/contexts/SyncProvider.tsx`, `src/contexts/DashboardContext.tsx`, and `supabase/functions/server/index.tsx`.
 
+Shared Google Calendar follows the same ownership boundary as Notion: Google
+writes, Supabase mirrors the last known good event snapshot, and `cr8w.com`
+reads. The server-only `CR8W_ICAL_URL` configures the shared feed. Calendar
+events live at `cr8w_calendar_events`; bounded synchronization metadata lives
+at `cr8w_calendar_sync_meta`.
+
 ## Change Rules
 
 - Work on a feature branch.

@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
+import {
+  calendarSyncLabel,
+  calendarSyncNeedsAttention,
+  shouldShowDashboardRetry,
+} from './calendarSyncPresentation';
 
 function relativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -20,7 +25,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced, freshness } = data;
+  const { syncStatus, lastSynced, freshness, calendarSync } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -42,9 +47,10 @@ export function SyncStatusBar() {
     ? `Notion mirror written ${relativeTime(mirrorUpdatedAt)}`
     : 'Notion mirror freshness unavailable';
   const partialSourceFailure = Object.values(freshness.sourceFreshness ?? {}).some(source => source.status === 'error');
+  const calendarNeedsAttention = calendarSyncNeedsAttention(calendarSync);
 
   if (syncStatus === 'fresh' && !mirrorIsStale && !partialSourceFailure && freshness.source === 'notion' &&
-      lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
+      !calendarNeedsAttention && lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
     return null;
   }
 
@@ -80,7 +86,8 @@ export function SyncStatusBar() {
       <span aria-label="Notion mirror freshness"> · {mirrorLabel}</span>
       {mirrorIsStale && <span> · Mirror stale</span>}
       {partialSourceFailure && <span> · Some sources failed; showing last good data</span>}
-      {(syncStatus === 'failed' || syncStatus === 'stale' || mirrorIsStale || partialSourceFailure) && (
+      {calendarNeedsAttention && <span aria-label="Shared calendar status"> · {calendarSyncLabel(calendarSync)}</span>}
+      {shouldShowDashboardRetry(syncStatus, mirrorIsStale, partialSourceFailure) && (
         <button
           onClick={() => actions.retrySync()}
           style={{

@@ -1,5 +1,25 @@
 # Validation
 
+## Shared Calendar Synchronization Health — 2026-09-11
+
+- Full CI-equivalent local gate passed: `pnpm test && pnpm check`.
+  - Vitest: 15 files, 122 tests.
+  - Node `.mjs`: 17 tests.
+  - Node stripped-TypeScript: 13 tests.
+  - TypeScript typecheck: passed.
+  - Vite 6.4.3 production build: passed.
+- Focused Chromium coverage passed:
+  `pnpm exec playwright test e2e/dashboard.spec.ts --grep 'shared-calendar|unconfigured shared calendar|calendar-only warning|mirror stale'`.
+  Result: 8 tests passed.
+- Browser scenarios cover unconfigured, never synchronized, healthy empty,
+  healthy populated, stale, and failed-with-last-known-good states. They also
+  verify that unconfigured refresh is disabled and calendar-only warnings do
+  not display the dashboard Retry button.
+- `git diff --check` passed.
+- The broader existing sign-in-gate E2E remains environment-dependent when a
+  fresh browser context has no local Supabase browser configuration. It is
+  unrelated to calendar health and was not changed.
+
 ## Registry-Driven Mirror UI Validation — 2026-09-10
 
 - Scope: `NotionMirrorSummary.tsx` (registry-driven collections + Money amount display), `ThisWeekPage.tsx` (passes `data.notionSources`), `NotionMirrorSummary.test.ts` (five new cases).

@@ -3,7 +3,7 @@ import type {
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
   CoFlowDate, CoFlowCheckin, WellNote,
 } from '../app/components/api';
-import type { SyncFreshness } from '../app/components/api';
+import type { CalendarEventKV, CalendarSyncState, SyncFreshness } from '../app/components/api';
 import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 
 export type {
@@ -32,6 +32,8 @@ export interface DashboardPayload {
   coFlowDates: CoFlowDate[];
   coFlowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
+  calendarEvents: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
   notionMirrors: NotionMirrors;
   notionSources: NotionSourceMetadata[];
   syncStatus: SyncStatus;

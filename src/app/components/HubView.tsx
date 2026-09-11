@@ -10,8 +10,12 @@ import { MBodyWidget } from './MBodyWidget';
 import { NotesFromTheWell } from './NotesFromTheWell';
 import { SHARED_EVENTS_LABEL, personalCalendarAuthMessage, sharedEventsAvailableNote } from './calendarMessaging';
 import { ArriveState, shouldShowArriveState } from './ArriveState';
-import type { Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts, CalendarEventKV } from './api';
+import type {
+  Task, Station, WellNote, Workshop, CoFlowDate, CoFlowCheckin, InviteCounts,
+  CalendarEventKV, CalendarSyncState,
+} from './api';
 import * as api from './api';
+import { calendarSyncLabel, calendarSyncNeedsAttention } from './calendarSyncPresentation';
 
 // ── Wellshop category → workshop tag matching ────────────────────────────────
 const WELLSHOP_TAG_MAP: Record<string, string[]> = {
@@ -47,6 +51,9 @@ interface HubViewProps {
   coFlowCheckins?: CoFlowCheckin[];
   actionItems?: Task[];
   stations?: Station[];
+  calendarEvents: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
+  onCalendarRefresh: () => void;
 }
 
 // ── Brand logo SVGs ──────────────────────────────────────────────────────────
@@ -344,7 +351,7 @@ function getGreeting() {
   return 'Good evening';
 }
 
-export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, syncTime, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [] }: HubViewProps) {
+export function HubView({ onNavigate, onNavigateGeyserStations, announcements, brainDumps, onAddBrainDump, onDeleteBrainDump, syncTime, activeUser, wellNotes, onAddWellNote, onLandWellNote, workshops = [], coFlowDates = [], coFlowCheckins = [], actionItems = [], stations = [], calendarEvents, calendarSync, onCalendarRefresh }: HubViewProps) {
   const [showSynergy, setShowSynergy] = useState(false);
   const [openSynergySections, setOpenSynergySections] = useState<Set<string>>(new Set());
   const [showAllDumps, setShowAllDumps] = useState(false);
@@ -377,41 +384,30 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
   }, []);
 
   // Calendar events from KV (synced from shared Google Calendar)
-  const [kvCalEvents, setKvCalEvents] = useState<CalendarEventKV[]>([]);
-  const [kvCalLoaded, setKvCalLoaded] = useState(false);
+  const [kvCalEvents, setKvCalEvents] = useState<CalendarEventKV[]>(calendarEvents);
+  const [calendarSyncState, setCalendarSyncState] = useState<CalendarSyncState>(calendarSync);
   const [icalSyncing, setIcalSyncing] = useState(false);
   const [icalSyncMsg, setIcalSyncMsg] = useState('');
   useEffect(() => {
-    api.getCalendarEvents()
-      .then(data => { setKvCalEvents(data || []); setKvCalLoaded(true); })
-      .catch(e => { if (!(e instanceof TypeError)) console.error(e); setKvCalLoaded(true); });
-  }, []);
+    setKvCalEvents(calendarEvents);
+    setCalendarSyncState(calendarSync);
+  }, [calendarEvents, calendarSync]);
 
   async function syncIcalCalendar() {
     setIcalSyncing(true);
     setIcalSyncMsg('');
     try {
-      const apiBase = (import.meta.env.VITE_API_BASE as string | undefined)
-        ?? (() => {
-          const h = window.location.hostname;
-          return (h.endsWith('.vercel.app') || h === 'createwell.monnyfest.co' || h === 'localhost')
-            ? '/api/server' : 'https://cr8w-home-v2.vercel.app/api/server';
-        })();
-      const res = await fetch(`${apiBase}/calendar-ical-sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer sb_publishable_KKMWtvpxkSGaq-xmie6viQ_pRzAb_4i` },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Sync failed');
+      const data = await api.syncSharedCalendar();
+      setKvCalEvents(data.events);
+      setCalendarSyncState(data.calendarSync);
       setIcalSyncMsg(`Synced ${data.count} event${data.count !== 1 ? 's' : ''} ✓`);
-      // Re-fetch calendar events to refresh the list
-      const updated = await api.getCalendarEvents();
-      setKvCalEvents(updated || []);
-    } catch (e: any) {
-      setIcalSyncMsg(`Sync error: ${e?.message ?? e}`);
+    } catch {
+      setIcalSyncMsg('Refresh failed; showing last good data');
+    } finally {
+      onCalendarRefresh();
+      setIcalSyncing(false);
+      setTimeout(() => setIcalSyncMsg(''), 4000);
     }
-    setIcalSyncing(false);
-    setTimeout(() => setIcalSyncMsg(''), 4000);
   }
 
   const [calendarTab, setCalendarTab] = useState<'calendar' | 'wellshop'>('calendar');
@@ -1072,15 +1068,25 @@ export function HubView({ onNavigate, onNavigateGeyserStations, announcements, b
         <div className="hub-section-header">
           <span className="hub-section-title">Calendar</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              role="status"
+              style={{
+                fontFamily: 'var(--font-label)',
+                fontSize: '0.68rem',
+                color: calendarSyncNeedsAttention(calendarSyncState) ? '#A85C22' : 'var(--text-muted)',
+              }}
+            >
+              {calendarSyncLabel(calendarSyncState)}
+            </span>
             <button
               onClick={syncIcalCalendar}
-              disabled={icalSyncing}
-              style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid rgba(194,91,56,0.35)', background: 'rgba(194,91,56,0.08)', color: '#C25B38', fontFamily: 'var(--font-label)', fontSize: '0.7rem', fontWeight: 600, cursor: icalSyncing ? 'default' : 'pointer', opacity: icalSyncing ? 0.6 : 1, whiteSpace: 'nowrap' }}
+              disabled={icalSyncing || !calendarSyncState.configured}
+              style={{ padding: '4px 12px', borderRadius: 8, border: '1px solid rgba(194,91,56,0.35)', background: 'rgba(194,91,56,0.08)', color: '#C25B38', fontFamily: 'var(--font-label)', fontSize: '0.7rem', fontWeight: 600, cursor: icalSyncing || !calendarSyncState.configured ? 'default' : 'pointer', opacity: icalSyncing || !calendarSyncState.configured ? 0.6 : 1, whiteSpace: 'nowrap' }}
             >
               {icalSyncing ? 'Syncing…' : '⟳ Sync Calendar'}
             </button>
             {icalSyncMsg && (
-              <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: icalSyncMsg.startsWith('Sync error') ? '#C03020' : '#3A7A3A' }}>{icalSyncMsg}</span>
+              <span style={{ fontFamily: 'var(--font-label)', fontSize: '0.68rem', color: icalSyncMsg.startsWith('Refresh failed') ? '#C03020' : '#3A7A3A' }}>{icalSyncMsg}</span>
             )}
             <a
               href="https://calendar.google.com/calendar/u/0/r"

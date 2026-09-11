@@ -1,5 +1,28 @@
 # CR8W Dashboard State
 
+## Shared Calendar Synchronization Health — 2026-09-11
+
+The dashboard now exposes authoritative shared Google Calendar synchronization
+health alongside the mirrored event snapshot. The server reports
+`not_configured`, `never_synced`, `ok`, or `error`, derives record count from
+the exact returned event array, and marks successful data stale after 24 hours.
+Persisted failures use bounded codes only (`fetch_failed`, `parse_failed`,
+`storage_failed`, or `unknown`).
+
+The iCal refresh path preserves last-known-good events on fetch and parse
+failures. Successful refreshes persist the event snapshot before success
+metadata. The live `ThisWeekPage`/`HubView` path now consumes calendar events
+and health from `DashboardContext`; it no longer makes a duplicate initial
+calendar request. Manual refresh uses the centralized authenticated API client,
+updates visible state immediately on success, preserves events on failure, and
+requests an authoritative dashboard reread.
+
+`SyncStatusBar` remains visible for calendar warnings but its Retry button is
+still reserved for dashboard/mirror failures. The shared calendar's own refresh
+control is disabled when the feed is unconfigured. Production connectivity is
+still blocked until the calendar owner supplies the secret iCal address through
+the approved server-side environment configuration.
+
 ## Atomic RPC in Production — 2026-09-10 ~16:39 local (Kimi session)
 
 The flag-gated atomic publication path is live in production. Sequence and evidence:

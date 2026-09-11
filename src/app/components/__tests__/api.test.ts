@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getCalendarEvents, req } from '../api';
+import { getCalendarEvents, req, syncSharedCalendar } from '../api';
 
 describe('api client req() helper', () => {
   beforeEach(() => {
@@ -89,5 +89,44 @@ describe('api client req() helper', () => {
     } as any);
 
     await expect(getCalendarEvents()).resolves.toEqual([]);
+  });
+
+  it('refreshes the shared calendar through the centralized authenticated client', async () => {
+    const response = {
+      ok: true,
+      count: 0,
+      events: [],
+      calendarSync: {
+        configured: true,
+        status: 'ok',
+        lastAttemptAt: '2026-09-11T12:00:00.000Z',
+        lastSuccessfulSyncAt: '2026-09-11T12:00:00.000Z',
+        recordCount: 0,
+        stale: false,
+      },
+    };
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(response),
+    } as any);
+
+    await expect(syncSharedCalendar()).resolves.toEqual(response);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/calendar-ical-sync'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: expect.stringMatching(/^Bearer /) }),
+      }),
+    );
+  });
+
+  it('surfaces shared calendar refresh errors', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      status: 502,
+      text: vi.fn().mockResolvedValue('{"error":"Shared calendar fetch failed","errorCode":"fetch_failed"}'),
+    } as any);
+
+    await expect(syncSharedCalendar()).rejects.toThrow('Shared calendar fetch failed');
   });
 });

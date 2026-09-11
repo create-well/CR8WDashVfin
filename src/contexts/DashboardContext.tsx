@@ -5,6 +5,7 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
+import type { CalendarEventKV, CalendarSyncState } from '../app/components/api';
 import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
@@ -51,6 +52,15 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventKV[]>([]);
+  const [calendarSync, setCalendarSync] = useState<CalendarSyncState>({
+    configured: false,
+    status: 'not_configured',
+    lastAttemptAt: null,
+    lastSuccessfulSyncAt: null,
+    recordCount: 0,
+    stale: false,
+  });
   const [notionMirrors, setNotionMirrors] = useState<NotionMirrors>({ people: [], flows: [], moves: [], content: [], money: [], engineeringDelivery: [] });
   const [notionSources, setNotionSources] = useState<NotionSourceMetadata[]>([]);
 
@@ -107,6 +117,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     setCoFlowDates(syncedData.coflowDates || []);
     setCoFlowCheckins(syncedData.coflowCheckins || []);
     setWellNotes(syncedData.wellNotes || []);
+    setCalendarEvents(syncedData.calendarEvents || []);
+    if (syncedData.calendarSync) setCalendarSync(syncedData.calendarSync);
     if (syncedData.notionMirrors) setNotionMirrors(syncedData.notionMirrors);
     if (syncedData.notionSources) setNotionSources(syncedData.notionSources);
     if (syncedData.freshness) setFreshness(syncedData.freshness);
@@ -469,6 +481,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
+    calendarEvents,
+    calendarSync,
     notionMirrors,
     notionSources,
     syncStatus,
