@@ -27,18 +27,139 @@ export class CalendarSyncError extends Error {
   }
 }
 
-function parseICalDate(value: string): string {
-  if (!value) return '';
-  if (/^\d{8}$/.test(value)) {
-    return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T00:00:00`;
-  }
-  const clean = value.replace(/Z$/, '+00:00');
-  const iso = clean.replace(
-    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
-    '$1-$2-$3T$4:$5:$6',
+interface CalendarProperty {
+  value: string;
+  parameters: Record<string, string>;
+}
+
+interface CalendarDateParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+function invalidCalendarDate(): never {
+  throw new CalendarSyncError('parse_failed', 502, 'Calendar event has an invalid date');
+}
+
+function validDateParts(parts: CalendarDateParts): boolean {
+  const date = new Date(Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  ));
+  return date.getUTCFullYear() === parts.year
+    && date.getUTCMonth() === parts.month - 1
+    && date.getUTCDate() === parts.day
+    && date.getUTCHours() === parts.hour
+    && date.getUTCMinutes() === parts.minute
+    && date.getUTCSeconds() === parts.second;
+}
+
+function dateParts(value: string): CalendarDateParts | null {
+  const match = value.match(
+    /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/,
   );
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  if (!match) return null;
+  const parts = {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4] ?? 0),
+    minute: Number(match[5] ?? 0),
+    second: Number(match[6] ?? 0),
+  };
+  return validDateParts(parts) ? parts : null;
+}
+
+function zonedDateToIso(parts: CalendarDateParts, timeZone: string): string {
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    });
+  } catch {
+    return invalidCalendarDate();
+  }
+
+  const desiredTime = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  let candidate = desiredTime;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const rendered = Object.fromEntries(
+      formatter.formatToParts(candidate).map(part => [part.type, part.value]),
+    );
+    const renderedTime = Date.UTC(
+      Number(rendered.year),
+      Number(rendered.month) - 1,
+      Number(rendered.day),
+      Number(rendered.hour),
+      Number(rendered.minute),
+      Number(rendered.second),
+    );
+    const adjusted = candidate + (desiredTime - renderedTime);
+    if (adjusted === candidate) break;
+    candidate = adjusted;
+  }
+
+  const rendered = Object.fromEntries(
+    formatter.formatToParts(candidate).map(part => [part.type, part.value]),
+  );
+  if (
+    Number(rendered.year) !== parts.year
+    || Number(rendered.month) !== parts.month
+    || Number(rendered.day) !== parts.day
+    || Number(rendered.hour) !== parts.hour
+    || Number(rendered.minute) !== parts.minute
+    || Number(rendered.second) !== parts.second
+  ) {
+    return invalidCalendarDate();
+  }
+  return new Date(candidate).toISOString();
+}
+
+function parseICalDate(property: CalendarProperty | null, required = false): string {
+  if (!property?.value) {
+    if (required) invalidCalendarDate();
+    return '';
+  }
+  const parts = dateParts(property.value);
+  if (!parts) return invalidCalendarDate();
+  if (/^\d{8}$/.test(property.value)) {
+    return `${property.value.slice(0, 4)}-${property.value.slice(4, 6)}-${property.value.slice(6, 8)}T00:00:00`;
+  }
+  if (property.value.endsWith('Z')) {
+    return new Date(Date.UTC(
+      parts.year,
+      parts.month - 1,
+      parts.day,
+      parts.hour,
+      parts.minute,
+      parts.second,
+    )).toISOString();
+  }
+  const timeZone = property.parameters.TZID;
+  if (timeZone) return zonedDateToIso(parts, timeZone);
+  return `${property.value.slice(0, 4)}-${property.value.slice(4, 6)}-${property.value.slice(6, 8)}T${property.value.slice(9, 11)}:${property.value.slice(11, 13)}:${property.value.slice(13, 15)}`;
 }
 
 function unescapeICalText(value: string): string {
@@ -61,18 +182,32 @@ export function parseCalendarIcal(text: string, syncedAt: string): CalendarMirro
   let match: RegExpExecArray | null;
   while ((match = veventRe.exec(unfolded)) !== null) {
     const block = match[1];
-    const property = (name: string) => {
-      const value = block.match(new RegExp(`(?:^|\\r?\\n)${name}[^:\\r\\n]*:([^\\r\\n]*)`))?.[1] ?? '';
-      return unescapeICalText(value);
+    const property = (name: string): CalendarProperty | null => {
+      const propertyMatch = block.match(
+        new RegExp(`(?:^|\\r?\\n)${name}((?:;[^:\\r\\n]+)*):([^\\r\\n]*)`),
+      );
+      if (!propertyMatch) return null;
+      const parameters = Object.fromEntries(
+        propertyMatch[1]
+          .split(';')
+          .filter(Boolean)
+          .map(parameter => {
+            const separator = parameter.indexOf('=');
+            const key = separator === -1 ? parameter : parameter.slice(0, separator);
+            const value = separator === -1 ? '' : parameter.slice(separator + 1);
+            return [key.toUpperCase(), value.replace(/^"|"$/g, '')];
+          }),
+      );
+      return { value: unescapeICalText(propertyMatch[2]), parameters };
     };
-    const start = property('DTSTART');
+    const textProperty = (name: string) => property(name)?.value ?? '';
     events.push({
-      id: property('UID') || `ical-${events.length}-${syncedAt}`,
-      title: property('SUMMARY') || '(No title)',
-      start: parseICalDate(start),
+      id: textProperty('UID') || `ical-${events.length}-${syncedAt}`,
+      title: textProperty('SUMMARY') || '(No title)',
+      start: parseICalDate(property('DTSTART'), true),
       end: parseICalDate(property('DTEND')),
-      location: property('LOCATION'),
-      description: property('DESCRIPTION'),
+      location: textProperty('LOCATION'),
+      description: textProperty('DESCRIPTION'),
       creator: '',
       synced_at: syncedAt,
     });

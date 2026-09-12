@@ -37,6 +37,26 @@ describe('parseCalendarIcal', () => {
     expect(parseCalendarIcal(EMPTY_FEED, NOW.toISOString())).toEqual([]);
   });
 
+  it('converts TZID event times to the correct UTC instant', () => {
+    const feed = EVENT_FEED
+      .replace('DTSTART:20260911T150000Z', 'DTSTART;TZID=America/New_York:20260911T150000')
+      .replace('DTEND:20260911T160000Z', 'DTEND;TZID=America/New_York:20260911T160000');
+
+    expect(parseCalendarIcal(feed, NOW.toISOString())[0]).toMatchObject({
+      start: '2026-09-11T19:00:00.000Z',
+      end: '2026-09-11T20:00:00.000Z',
+    });
+  });
+
+  it.each([
+    ['missing DTSTART', EVENT_FEED.replace('DTSTART:20260911T150000Z\r\n', '')],
+    ['invalid DTSTART', EVENT_FEED.replace('20260911T150000Z', '20260230T150000Z')],
+    ['invalid TZID', EVENT_FEED.replace('DTSTART:20260911T150000Z', 'DTSTART;TZID=Not/A_Zone:20260911T150000')],
+  ])('rejects an event with %s', (_name, feed) => {
+    expect(() => parseCalendarIcal(feed, NOW.toISOString()))
+      .toThrowError(CalendarSyncError);
+  });
+
   it('rejects an unusable payload', () => {
     expect(() => parseCalendarIcal('<html>not a calendar</html>', NOW.toISOString()))
       .toThrowError(CalendarSyncError);
@@ -102,5 +122,18 @@ describe('syncCalendarIcal', () => {
       CALENDAR_SYNC_META_KEY,
       expect.stringContaining('"errorCode":"storage_failed"'),
     );
+  });
+
+  it('preserves the event mirror when DTSTART is invalid', async () => {
+    const deps = dependencies({
+      fetchCalendar: vi.fn(async () => new Response(
+        EVENT_FEED.replace('20260911T150000Z', 'not-a-date'),
+        { status: 200 },
+      )),
+    });
+
+    await expect(syncCalendarIcal('https://calendar.example/team.ics', deps))
+      .rejects.toMatchObject({ code: 'parse_failed' });
+    expect(vi.mocked(deps.writeValue).mock.calls.every(([key]) => key !== CALENDAR_EVENTS_KEY)).toBe(true);
   });
 });
