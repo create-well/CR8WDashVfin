@@ -154,6 +154,7 @@ export const setInviteCounts = (counts: Omit<InviteCounts, 'updated_at'>) => req
 // Calendar Events (synced from Google Calendar via KV)
 export const getCalendarEvents = () => req<CalendarEventKV[]>('GET', '/calendar-events');
 export const setCalendarEvents = (events: CalendarEventKV[]) => req<{ ok: boolean; count: number }>('POST', '/calendar-events', events);
+export const syncSharedCalendar = () => req<CalendarSyncResponse>('POST', '/calendar-ical-sync');
 
 // ── /api/dashboard — Notion-backed unified payload ───────────────────────────
 // Derives the dashboard URL from the same hostname logic as BASE so that
@@ -335,6 +336,7 @@ export interface SyncData {
   coflowCheckins: CoFlowCheckin[];
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
 }
 
 export interface CalendarEventKV {
@@ -346,4 +348,27 @@ export interface CalendarEventKV {
   description: string;
   creator: string;
   synced_at?: string;
+}
+
+export type CalendarSyncErrorCode =
+  | 'fetch_failed'
+  | 'parse_failed'
+  | 'storage_failed'
+  | 'unknown';
+
+export interface CalendarSyncState {
+  configured: boolean;
+  status: 'not_configured' | 'never_synced' | 'ok' | 'error';
+  lastAttemptAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  recordCount: number;
+  stale: boolean;
+  errorCode?: CalendarSyncErrorCode;
+}
+
+export interface CalendarSyncResponse {
+  ok: true;
+  count: number;
+  events: CalendarEventKV[];
+  calendarSync: CalendarSyncState;
 }

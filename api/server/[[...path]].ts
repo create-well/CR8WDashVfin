@@ -9,6 +9,11 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { CalendarSyncError, syncCalendarIcal } from '../calendar-ical-sync.js';
+import {
+  CALENDAR_SYNC_META_KEY,
+  deriveCalendarSyncState,
+} from '../calendar-sync-health.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function sb() {
@@ -106,12 +111,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'cr8w_tasks','cr8w_stations','cr8w_forum','cr8w_messages',
         'cr8w_braindumps','cr8w_announcements','cr8w_forum_replies',
         'cr8w_workshops','cr8w_workshop_programs','cr8w_workshop_resources',
-        'cr8w_coflow_dates','cr8w_coflow_checkins','cr8w_well_notes','cr8w_calendar_events',
+        'cr8w_coflow_dates','cr8w_coflow_checkins','cr8w_well_notes',
+        'cr8w_calendar_events', CALENDAR_SYNC_META_KEY,
       ];
       const { data, error } = await sb().from(TABLE).select('key,value').in('key', KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const m: Record<string, any[]> = {};
-      for (const row of data ?? []) m[row.key] = parseList(row.value);
+      let calendarMetadata: unknown = null;
+      for (const row of data ?? []) {
+        if (row.key === CALENDAR_SYNC_META_KEY) calendarMetadata = row.value;
+        else m[row.key] = parseList(row.value);
+      }
+      const calendarEvents = m['cr8w_calendar_events'] ?? [];
       res.json({
         tasks: m['cr8w_tasks']??[], stations: m['cr8w_stations']??[],
         forum: m['cr8w_forum']??[], messages: m['cr8w_messages']??[],
@@ -119,7 +130,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         forumReplies: m['cr8w_forum_replies']??[], workshops: m['cr8w_workshops']??[],
         workshopPrograms: m['cr8w_workshop_programs']??[], workshopResources: m['cr8w_workshop_resources']??[],
         coflowDates: m['cr8w_coflow_dates']??[], coflowCheckins: m['cr8w_coflow_checkins']??[],
-        wellNotes: m['cr8w_well_notes']??[], calendarEvents: m['cr8w_calendar_events']??[],
+        wellNotes: m['cr8w_well_notes']??[], calendarEvents,
+        calendarSync: deriveCalendarSyncState({
+          configured: Boolean(process.env.CR8W_ICAL_URL),
+          metadata: calendarMetadata,
+          recordCount: calendarEvents.length,
+        }),
       });
       return;
     }
@@ -216,59 +232,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 
     // ── iCal Calendar Sync ────────────────────────────────────────────────────
-    // POST /calendar-ical-sync  — fetches CR8W_ICAL_URL, parses VEVENTs, stores
+    // POST /calendar-ical-sync — fetches CR8W_ICAL_URL, parses VEVENTs, stores
     if (resource === 'calendar-ical-sync' && method === 'POST') {
-      const icalUrl = process.env.CR8W_ICAL_URL;
-      if (!icalUrl) { res.status(500).json({ error: 'CR8W_ICAL_URL env var not set on Vercel' }); return; }
       try {
-        const icalRes = await fetch(icalUrl);
-        if (!icalRes.ok) { res.status(502).json({ error: `iCal fetch failed: ${icalRes.status}` }); return; }
-        const text = await icalRes.text();
-
-        // Parse VEVENT blocks
-        const events: any[] = [];
-        const veventRe = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
-        let m: RegExpExecArray | null;
-        while ((m = veventRe.exec(text)) !== null) {
-          const block = m[1];
-          const prop = (name: string) => {
-            const r = new RegExp(String.raw`${name}[^:
-]*:([^
-]+)`);
-            const hit = block.match(r);
-            return hit ? hit[1].replace(/\n/g, '
-').replace(/\,/g, ',').replace(//g, '').trim() : '';
-          };
-          const rawStart = prop('DTSTART');
-          const rawEnd   = prop('DTEND');
-          const parseICalDate = (dt: string): string => {
-            if (!dt) return '';
-            // All-day: YYYYMMDD (8 digits, no T)
-            if (/^\d{8}$/.test(dt)) return `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}T00:00:00`;
-            // DateTime with Z: YYYYMMDDTHHMMSSZ
-            const clean = dt.replace(/Z$/, '+00:00');
-            const iso = clean.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6');
-            const d = new Date(iso);
-            return isNaN(d.getTime()) ? dt : d.toISOString();
-          };
-          events.push({
-            id: prop('UID') || `ical-${Date.now()}-${events.length}`,
-            title: prop('SUMMARY') || '(No title)',
-            start: parseICalDate(rawStart),
-            end:   parseICalDate(rawEnd),
-            location:    prop('LOCATION'),
-            description: prop('DESCRIPTION'),
-            creator:     '',
-            synced_at:   new Date().toISOString(),
-          });
-        }
-
-        await setList('cr8w_calendar_events', events);
-        res.json({ ok: true, count: events.length });
+        const result = await syncCalendarIcal(process.env.CR8W_ICAL_URL, {
+          fetchCalendar: url => fetch(url),
+          readValue: kvGet,
+          writeValue: kvSet,
+        });
+        res.json({
+          ok: true,
+          count: result.events.length,
+          events: result.events,
+          calendarSync: deriveCalendarSyncState({
+            configured: true,
+            metadata: result.metadata,
+            recordCount: result.events.length,
+          }),
+        });
         return;
-      } catch (e: any) {
-        console.error('[ical-sync]', e);
-        res.status(500).json({ error: `iCal sync failed: ${e?.message ?? e}` });
+      } catch (error) {
+        if (error instanceof CalendarSyncError) {
+          console.error('[ical-sync]', error.code);
+          res.status(error.httpStatus).json({ error: error.message, errorCode: error.code });
+          return;
+        }
+        console.error('[ical-sync]', 'unknown');
+        res.status(500).json({ error: 'Shared calendar sync failed', errorCode: 'unknown' });
         return;
       }
     }

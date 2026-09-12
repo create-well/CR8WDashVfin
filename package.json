@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.49.8",
@@ -70,7 +71,8 @@
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "vite": "6.3.5",
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "react": "18.3.1",
