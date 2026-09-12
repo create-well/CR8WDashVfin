@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CR8W Dashboard v2 HD Update</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&family=Fredoka:wght@400;500;600&family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+  --deep-rust: #C25B38;
+  --clay-velour: #E8AF93;
+  --peach-haze: #FFDEC2;
+  --camel-sun: #D4A771;
+  --sandstone: #EAE3DB;
+  --deep-black: #101010;
+  --sage: #8FA090;
+  --text-dark: #352d28;
+  --text-muted: #a69a8f;
+  --line: #ddd4ca;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Montserrat', 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 400;
+  line-height: 1.75;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 28px;
+  color: var(--text-dark);
+  background: #faf9f5;
+  font-size: 15px;
+}
+
+/* Display — Fredoka for large brand moments */
+h1 {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 500;
+  color: var(--deep-rust);
+  border-bottom: 3px solid var(--deep-rust);
+  padding-bottom: 16px;
+  font-size: 2.4em;
+  margin-top: 0;
+  letter-spacing: 0.01em;
+}
+
+/* Headings — Blinker uppercase for section headers */
+h2 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--deep-rust);
+  margin-top: 48px;
+  font-size: 1.35em;
+  border-left: 4px solid var(--peach-haze);
+  padding-left: 16px;
+}
+
+h3 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clay-velour);
+  margin-top: 32px;
+  font-size: 1.1em;
+}
+
+h4 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 600;
+  color: var(--deep-rust);
+  margin-top: 24px;
+  font-size: 1em;
+}
+
+p {
+  margin: 0 0 1em 0;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 24px 0;
+  font-size: 0.92em;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th {
+  background: var(--deep-rust);
+  color: var(--sandstone);
+  font-family: 'Blinker', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+tr:nth-child(even) { background: rgba(234, 227, 219, 0.4); }
+tr:hover { background: rgba(255, 222, 194, 0.3); }
+
+/* Blockquotes — the well notes */
+blockquote {
+  background: linear-gradient(135deg, var(--sandstone) 0%, var(--peach-haze) 100%);
+  border-left: 4px solid var(--deep-rust);
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: var(--text-dark);
+}
+
+blockquote p { margin: 0; }
+blockquote p + p { margin-top: 0.8em; }
+
+/* Code */
+code {
+  background: var(--sandstone);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.9em;
+  color: var(--deep-rust);
+}
+
+pre {
+  background: var(--deep-black);
+  color: var(--sandstone);
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* Lists */
+ul, ol {
+  margin: 16px 0;
+  padding-left: 28px;
+}
+
+li { margin: 8px 0; }
+
+/* Links */
+a {
+  color: var(--deep-rust);
+  text-decoration: none;
+  border-bottom: 1px solid var(--clay-velour);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+a:hover {
+  color: var(--clay-velour);
+  border-bottom-color: var(--deep-rust);
+}
+
+/* Horizontal rule */
+hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, var(--deep-rust), var(--peach-haze), var(--sandstone));
+  margin: 40px 0;
+  border-radius: 1px;
+}
+
+/* Strong & Em */
+strong { color: var(--deep-rust); font-weight: 700; }
+em { color: var(--clay-velour); font-style: italic; }
+
+/* Print-friendly */
+@media print {
+  body { background: white; padding: 20px; max-width: 100%; }
+  h1 { font-size: 1.8em; }
+  h2 { font-size: 1.1em; }
+}
+</style>
+</head>
+<body>
+<h1>CR8W Dashboard v2 — HD-Informed Update (Four-Person Team)</h1>
+<blockquote>
+<p><em>The dashboard is the riverbank. It holds the current so the team doesn&rsquo;t have to think about where to go.</em><br />
+This update refines the v2 specification with the full four-person team dynamic (Sunshine, Monny, Bingle, Omar) and integrates Human Design as a practical tool — not a dictator, not a language the dashboard speaks, but a current the dashboard makes visible.</p>
+</blockquote>
+<hr />
+<h2>What&rsquo;s New in This Update</h2>
+<h3>1. The Team is Four Now</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Sunshine</strong></th>
+<th><strong>Monny</strong></th>
+<th><strong>Bingle</strong></th>
+<th><strong>Omar</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Role in the Well</strong></td>
+<td>Vision &amp; Soul Vessel</td>
+<td>The Bridge · Tinkerbell</td>
+<td>The Seer · Focus Keeper</td>
+<td>First Responder · Technical Anchor</td>
+</tr>
+<tr>
+<td><strong>What she holds</strong></td>
+<td>The why. The heartbeat.</td>
+<td>The how. The systems. The body.</td>
+<td>The what. The story. The focus.</td>
+<td>The gear. The live moment. The fix.</td>
+</tr>
+<tr>
+<td><strong>Dashboard view</strong></td>
+<td>Creative direction, vision, soul</td>
+<td>Operations, partnerships, systems</td>
+<td>Story alignment, meeting pace, direction</td>
+<td>Technical status, gear check, live problems</td>
+</tr>
+</tbody>
+</table>
+<p>Omar is <strong>not</strong> a rotating Flowtainer role. He is the fixed Technical Anchor who holds the gear so the founders can hold the water. His role is: <strong>Prime the Pump, Hold the Banks, and Catch the Room.</strong></p>
+<h3>2. HD as a Tool, Not a Dictator</h3>
+<p>The dashboard doesn&rsquo;t say &ldquo;Sacral Authority&rdquo; or &ldquo;Ego Projected.&rdquo; It says:<br />
+- <em>&ldquo;What&rsquo;s your gut saying?&rdquo;</em> (not &ldquo;Check your sacral&rdquo;)<br />
+- <em>&ldquo;Bingle, what&rsquo;s your read?&rdquo;</em> (the invitation, not the strategy)<br />
+- <em>&ldquo;Is this truly yours, or something you absorbed from the room?&rdquo;</em> (the absorption check, not &ldquo;open chart conditioning&rdquo;)<br />
+- <em>&ldquo;Has Omar checked the gear?&rdquo;</em> (the Line 1 security need, not the &ldquo;Investigator profile&rdquo;)</p>
+<p>The HD data lives in the <strong>CO-FLOW tab</strong> as the <em>How We Flow</em> reference. It is available when the team wants it. It is not required reading before using the dashboard.</p>
+<h3>3. New Dashboard Features</h3>
+<h4>A. Role Banner — Now Four-Person</h4>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│  THIS WEEK'S DROP (Episode 4)                                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐              │
+│  │ Flow     │ │ Closer   │ │ Benediction│ │ Tech     │              │
+│  │ Keeper   │ │          │ │            │ │ Anchor   │              │
+│  │ ☀️ Sunshine│ │ 🌙 Bingle │ │ 🌊 Monny    │ │ ⚡ Omar    │              │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘              │
+│  Topic: [What does Create Well mean...]                              │
+│  Recording: Wednesday, June 25 · 7pm · Omar: gear checked ✅          │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Omar&rsquo;s card always shows:</strong><br />
+- Gear status: checked / needs attention / audio-only backup ready<br />
+- His &ldquo;shortcut of the week&rdquo; — what broke last time and how he fixed it (Line 3 learning)<br />
+- A small note: <em>&ldquo;Omar responds to the real problem. Bring him the fire, not the blank page.&rdquo;</em></p>
+<h4>B. The Absorption Check — A New Somatic Entry Point</h4>
+<p>Before the mood check-in, a subtle prompt appears:</p>
+<pre><code>Before you drop in: is anything you're carrying not yours?
+[ I'm clear ]  [ The room feels heavy ]  [ Not sure — check in first ]
+</code></pre>
+<p><strong>Why this matters:</strong> Bingle and Omar have the most open charts — they absorb the most from the environment. Monny&rsquo;s open Heart means she may overcommit to prove worth. Sunshine&rsquo;s open Heart/Spleen means she may pick up others&rsquo; fears as her own intuition. This is a 10-second check that saves 20 minutes of off-flow conversation later.</p>
+<p><strong>The dashboard logs this (anonymously) and shows a team pattern:</strong> <em>&ldquo;Three of you felt the room was heavy this week. What&rsquo;s the water showing you?&rdquo;</em></p>
+<h4>C. The Weekly Rhythm Strip — Now Four-Person</h4>
+<pre><code>Mon · Cohoe-lite    Wed · The Weeecording    Thu · Decomprocessing
+🟢 Sunshine: proposed  🟡 Omar: gear checked     ⚪ Bingle: rest cycle
+   Monny: responded       Monny: gut clear        Monny: process deeply
+   Bingle: invited        Bingle: invited to      Sunshine: move on
+   Omar: schedule known      hold banks              Omar: what broke?
+</code></pre>
+<p>Each day shows the person-specific action based on their design:<br />
+- <strong>Sunshine:</strong> &ldquo;waited through emotional wave&rdquo; / &ldquo;initiated direction&rdquo;<br />
+- <strong>Monny:</strong> &ldquo;gut said yes&rdquo; / &ldquo;responded to real problem&rdquo;<br />
+- <strong>Bingle:</strong> &ldquo;invited to contribute&rdquo; / &ldquo;held focus&rdquo; / &ldquo;rest cycle&rdquo;<br />
+- <strong>Omar:</strong> &ldquo;gear checked&rdquo; / &ldquo;responded to fire&rdquo; / &ldquo;shortcut learned&rdquo;</p>
+<h4>D. Connected Stats — Now Four-Person</h4>
+<table>
+<thead>
+<tr>
+<th>Card</th>
+<th>What it shows</th>
+<th>Who updates</th>
+<th>HD note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Moves</strong></td>
+<td>Active tasks in GEYSER</td>
+<td>Monny + Omar</td>
+<td>Monny&rsquo;s gut says yes to what goes here. Omar&rsquo;s tasks are the technical fires he responded to.</td>
+</tr>
+<tr>
+<td><strong>Stations</strong></td>
+<td>Workshop readiness</td>
+<td>Station leads</td>
+<td>Bingle&rsquo;s taste evaluates alignment.</td>
+</tr>
+<tr>
+<td><strong>Guests</strong></td>
+<td>RSVP status</td>
+<td>Monny</td>
+<td>Monny&rsquo;s open Heart checked — is she overcommitting to prove worth?</td>
+</tr>
+<tr>
+<td><strong>Team</strong></td>
+<td>Who&rsquo;s aligned, who&rsquo;s carrying what</td>
+<td>All</td>
+<td>The absorption check feeds this card.</td>
+</tr>
+<tr>
+<td><strong>Gear</strong></td>
+<td>(NEW) Technical status</td>
+<td>Omar</td>
+<td>Omar&rsquo;s Line 1 — has he investigated the tools? His shortcut of the week.</td>
+</tr>
+</tbody>
+</table>
+<h4>E. The Gear Card — A New Stat</h4>
+<pre><code>┌──────────────────┐
+│  ⚡ Gear          │
+│  Main cam: ✅     │
+│  DJI: ✅          │
+│  Mics: ✅         │
+│  Backup: ✅       │
+│  Omar's shortcut:  │
+│  &quot;Batch export     │
+│   saves 40 min&quot;    │
+└──────────────────┘
+</code></pre>
+<p><strong>Why this matters:</strong> Omar&rsquo;s role is invisible in v1. The gear card makes his contribution visible. It shows what he checked, what he&rsquo;s learned, and whether the technical container is ready. It also honors his Line 1 (needs to investigate before performing) and Line 3 (learns through trial and error, teaches the shortcut).</p>
+<h4>F. The Question Bank — Now Accessible from PLAYGROUND</h4>
+<pre><code>┌─────────────────────────────────────────────┐
+│  🎨 Joy Tools                                 │
+│  [Random prompt generator]                   │
+│  [Creative warm-up (5 min)]                    │
+│  [The Question Bank] ← NEW                    │
+│                                               │
+│  This week's questions (chosen by Flow Keeper):│
+│  • &quot;What found you this week that your        │
+│     body said yes to?&quot;                        │
+│  • &quot;What direction is pulling you right now,  │
+│     even if you can't explain it?&quot;            │
+│  • &quot;What's one thing you learned the hard way │
+│     that the team should know?&quot; (Omar's)     │
+└─────────────────────────────────────────────┘
+</code></pre>
+<h4>G. The Topic Well — NEW Dashboard Module (from team chat)</h4>
+<p>Sunshine proposed: <em>&ldquo;what if we chose topics based on what calls to us / what&rsquo;s relevant that week&rdquo;</em> with the template &ldquo;CREATING AND _____&rdquo;. Monny&rsquo;s response: <em>&ldquo;I can figure out that process and share possible flow motion&rdquo;</em>. The team wants this built into the dashboard.</p>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│  💧 THE TOPIC WELL                                                   │
+│  This week's template: CREATING AND ____________                     │
+│                                                                       │
+│  [Drop your fill in the well]                                        │
+│  &quot;What are you living through right now?&quot;                            │
+│  [drop it in]  [🌀 anonymous]                                        │
+│                                                                       │
+│  DROPS THIS WEEK (6)                                                 │
+│  🌊 Monny: &quot;creating while bridging&quot;                               │
+│  ☀️ Sunshine: &quot;creating through dysregulation&quot;                       │
+│  🌙 Bingle: &quot;creating and the network that holds you&quot;              │
+│  ⚡ Omar: &quot;creating while the gear breaks&quot;                          │
+│                                                                       │
+│  SYNTHESIS BY MONNY · 2 CANDIDATES                                   │
+│  ┌─────────────────────────────────────────────────────┐            │
+│  │ Candidate 1: CREATING AND regulating               │            │
+│  │ The overlap: survival, dysregulation, the bridge. │            │
+│  │ My gut: mmm-hmm ✅                                  │            │
+│  └─────────────────────────────────────────────────────┘            │
+│  ┌─────────────────────────────────────────────────────┐            │
+│  │ Candidate 2: CREATING AND surviving                │            │
+│  │ My gut: unh-unh ❌ (too heavy for this week)        │            │
+│  └─────────────────────────────────────────────────────┘            │
+│                                                                       │
+│  FLOW KEEPER'S CALL (Sunshine)                                        │
+│  Topic: CREATING AND regulating                                      │
+│  Why: My gut said yes. The water is rough. The banks are loose.    │
+│  [🔒 Lock Topic]                                                     │
+│                                                                       │
+│  [View past topics]  [The template library]                           │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>The Topic Well flow:</strong><br />
+1. <strong>Phase 1: The Drop</strong> (Monday, async) — Each person drops a &ldquo;CREATING AND _____&rdquo; fill. No pressure. No obligation. Anonymous or named.<br />
+2. <strong>Phase 2: The Synthesis</strong> (Monny, Monday-Tuesday) — Monny reads the drops, finds the pattern, proposes 2-3 candidates with her gut response (mmm-hmm / unh-unh). She is the synthesizer. She creates the &ldquo;flow motion&rdquo; and &ldquo;flowhoe pathways.&rdquo;<br />
+3. <strong>Phase 3: The Flow Keeper&rsquo;s Call</strong> (Monday late / Tuesday) — The Flow Keeper reviews Monny&rsquo;s synthesis and locks the topic based on their gut. Not a vote. A response.<br />
+4. <strong>Phase 4: The Lock</strong> (Tuesday, by end of day) — The topic is confirmed. The Question Bank auto-filters. The Weekly Rhythm Strip updates. The Role Banner shows the topic. Omar receives the topic so his Sacral can respond to the technical needs.</p>
+<p><strong>HD safety in the Topic Well:</strong><br />
+- Sunshine (MG): initiates the template. But must wait through her emotional wave before locking.<br />
+- Monny (Generator): responds to the drops. Her synthesis is a bridge, not a creation. Her gut is the filter. Her open Heart means she may over-synthesize to prove worth.<br />
+- Bingle (Projector): waits for invitation to drop. Her taste is the filter. &ldquo;Bingle, what does your taste tell you about Monny&rsquo;s synthesis?&rdquo;<br />
+- Omar (MG): responds to the real problem. &ldquo;Omar, what&rsquo;s the gear teaching you about creating this week?&rdquo;</p>
+<p><strong>The language:</strong> The Topic Well speaks the team&rsquo;s actual voice: &ldquo;drop it in,&rdquo; &ldquo;the well,&rdquo; &ldquo;flow motion,&rdquo; &ldquo;flowhoe pathways,&rdquo; &ldquo;explwhoreatory,&rdquo; &ldquo;my gut said yes,&rdquo; &ldquo;the water is rough,&rdquo; &ldquo;mmm-hmm / unh-unh,&rdquo; &ldquo;toss in topics,&rdquo; &ldquo;feel freeeeeeeness.&rdquo;</p>
+<h4>H. The How We Flow Reference — Lives in CO-FLOW</h4>
+<p>The CO-FLOW tab now contains the <em>How We Flow</em> document as a living reference. It is not a wall of text. It is a searchable, sectioned guide:</p>
+<pre><code>CO-FLOW · How We Move Together
+┌─────────────────────────────────────────────┐
+│  QUICK LINKS                                  │
+│  [The Four People] [Decision Flow] [Roles]   │
+│  [Weekly Rhythm] [Friction Map] [Omar's Role]│
+│  [The Topic Well] [Monny's Synthesis]        │
+│                                               │
+│  THIS WEEK'S CHECK                            │
+│  Is anyone carrying something not theirs?    │
+│  [Sunshine: clear] [Monny: check]            │
+│  [Bingle: clear] [Omar: clear]               │
+│                                               │
+│  LAST UPDATED: June 24, 2026                   │
+│  [Suggest an edit]                            │
+└─────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<h2>Updated Design Principles</h2>
+<ol>
+<li><strong>Flow over force.</strong> Every element earns its place. If it doesn&rsquo;t serve a weekly decision, it goes.</li>
+<li><strong>The banks hold the water.</strong> The dashboard makes the operating rhythm <em>visible</em> — not just possible.</li>
+<li><strong>Four users, one view.</strong> Sunshine, Monny, Bingle, and Omar each see what they need without switching contexts.</li>
+<li><strong>HD is a tool, not a language.</strong> The dashboard speaks Create Well. The HD data lives in the reference doc.</li>
+<li><strong>Live data or nothing.</strong> A stat that reads <code>0</code> is worse than no stat. Connect it or hide it.</li>
+<li><strong>Metaphor is functional.</strong> &ldquo;The Well&rdquo; isn&rsquo;t just a name. It&rsquo;s where drops become knowledge.</li>
+<li><strong>Omar is visible.</strong> The gear card, the shortcut, the technical status — his contribution is as visible as the creative work.</li>
+<li><strong>The team&rsquo;s voice is the interface.</strong> &ldquo;Drop it in.&rdquo; &ldquo;Feel freeeeeeeness.&rdquo; &ldquo;Explwhoreatory.&rdquo; The dashboard speaks like the team actually talks.</li>
+<li><strong>The Topic Well is the creative engine.</strong> Sunshine&rsquo;s template. Monny&rsquo;s synthesis. The Flow Keeper&rsquo;s gut. The team chooses what flows.</li>
+</ol>
+<hr />
+<h2>Updated Implementation Priority</h2>
+<h3>Phase 1: The Banks (Week 1)</h3>
+<ul>
+<li>[ ] Connect stats cards to real data (Google Sheets)</li>
+<li>[ ] Add Gear card with Omar&rsquo;s technical status</li>
+<li>[ ] Replace calendar cookie wall with event list</li>
+<li>[ ] Add Role Banner with four-person team + Omar&rsquo;s gear status</li>
+<li>[ ] Add Topic Well module with &ldquo;CREATING AND _____&rdquo; template</li>
+<li>[ ] Monny&rsquo;s Flow Motion synthesizer role documented</li>
+<li>[ ] Connect Tools grid to actual URLs + add Flowtainer + Topic Well</li>
+<li>[ ] Add Absorption Check prompt (somatic entry point)</li>
+</ul>
+<h3>Phase 2: The Current (Week 2)</h3>
+<ul>
+<li>[ ] Build Weekly Rhythm Strip with four-person design notes</li>
+<li>[ ] Functional MBody SPIN logger</li>
+<li>[ ] Functional Notes from the Well drop box</li>
+<li>[ ] Add greeting rotation bank (12 options)</li>
+<li>[ ] Mood check-in log + pattern tracking</li>
+<li>[ ] Add Question Bank to PLAYGROUND</li>
+</ul>
+<h3>Phase 3: The Deep Water (Week 3-4)</h3>
+<ul>
+<li>[ ] WORKSHOPS tab: station map + pipeline</li>
+<li>[ ] GEYSER tab: task manager with four-person filters</li>
+<li>[ ] CO-FLOW tab: How We Flow reference (searchable, sectioned)</li>
+<li>[ ] PLAYGROUND tab: MBody, joy tools, experiments</li>
+</ul>
+<h3>Phase 4: The Reflection (Ongoing)</h3>
+<ul>
+<li>[ ] Mood + absorption pattern visualization</li>
+<li>[ ] MBody history + optional streaks</li>
+<li>[ ] Well drops → question bank pipeline</li>
+<li>[ ] Team check-in reminders</li>
+<li>[ ] Omar&rsquo;s shortcut of the week log</li>
+</ul>
+<hr />
+<h2>The Google Sheets Stack — Updated</h2>
+<table>
+<thead>
+<tr>
+<th>Sheet</th>
+<th>Purpose</th>
+<th>Who Writes</th>
+<th>HD Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Guests</strong></td>
+<td>RSVP tracking</td>
+<td>Monny</td>
+<td>Monny&rsquo;s open Heart check: is she overcommitting?</td>
+</tr>
+<tr>
+<td><strong>Stations</strong></td>
+<td>Workshop readiness</td>
+<td>Station leads</td>
+<td>Bingle&rsquo;s taste evaluates alignment</td>
+</tr>
+<tr>
+<td><strong>Tasks</strong></td>
+<td>GEYSER task list</td>
+<td>All</td>
+<td>Monny&rsquo;s gut assigns. Omar&rsquo;s tasks are the fires he responded to.</td>
+</tr>
+<tr>
+<td><strong>Roles</strong></td>
+<td>Episode role rotation</td>
+<td>Monny (scheduled)</td>
+<td>Omar&rsquo;s role is fixed: Tech Anchor</td>
+</tr>
+<tr>
+<td><strong>Mood Log</strong></td>
+<td>Somatic check-in data</td>
+<td>All</td>
+<td>Sunshine&rsquo;s open Spleen check: is this fear hers or absorbed?</td>
+</tr>
+<tr>
+<td><strong>Absorption Check</strong></td>
+<td>(NEW) Room-feel log</td>
+<td>All</td>
+<td>Bingle + Omar check: is this mine or the room&rsquo;s?</td>
+</tr>
+<tr>
+<td><strong>Well Drops</strong></td>
+<td>Notes from the Well</td>
+<td>All</td>
+<td>Anyone can drop. The well fills from the bottom up.</td>
+</tr>
+<tr>
+<td><strong>Gear Log</strong></td>
+<td>(NEW) Technical status</td>
+<td>Omar</td>
+<td>Omar&rsquo;s Line 1 + Line 3: what he checked and what he learned</td>
+</tr>
+<tr>
+<td><strong>Shortcuts</strong></td>
+<td>(NEW) Omar&rsquo;s learnings</td>
+<td>Omar</td>
+<td>What broke and how he fixed it. The team&rsquo;s shortcut library.</td>
+</tr>
+<tr>
+<td><strong>Topics</strong></td>
+<td>(NEW) The Topic Well</td>
+<td>All</td>
+<td>Sunshine&rsquo;s template. Monny&rsquo;s synthesis. Flow Keeper&rsquo;s call.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>What Stays the Same</h2>
+<ul>
+<li>The brand palette (Deep Rust, Sandstone, Peach Haze, Clay Velour, Camel Sun, Deep Black) — now mapped to the official 2025 brand board hexes</li>
+<li>The tab names (THE WELL, WORKSHOPS, GEYSER, PLAYGROUND, CO-FLOW)</li>
+<li>The mood check-in (flowing / foggy / fired up)</li>
+<li>The greeting by name</li>
+<li>The &ldquo;Share Link&rdquo; button</li>
+<li>The Collective Synergy footer</li>
+<li>The metaphors (the well, the river, the banks, the water, the drop)</li>
+<li>The Flowtainer structure (Prime the Pump → Arrive Well → The Flow → Closing Ritual)</li>
+</ul>
+<hr />
+<h2>What Gets Added</h2>
+<ul>
+<li><strong>Omar</strong> as the fixed Technical Anchor across all Flowtainers</li>
+<li><strong>The Gear Card</strong> as a visible stat on the home screen</li>
+<li><strong>The Absorption Check</strong> as a somatic entry point before the mood check</li>
+<li><strong>The Question Bank</strong> accessible from PLAYGROUND</li>
+<li><strong>The How We Flow reference</strong> living in CO-FLOW</li>
+<li><strong>The Shortcut of the Week</strong> — Omar&rsquo;s Line 3 learning, shared with the team</li>
+<li><strong>HD-informed design notes</strong> on every card, but never HD jargon in the interface</li>
+</ul>
+<hr />
+<h2>The One-Line Pitch</h2>
+<blockquote>
+<p><strong>v1 is a beautiful riverbank with no water. v2 connects the plumbing so the river can flow. This update adds the fourth person, the gear check, and the current map so the whole team knows where the water is going.</strong></p>
+</blockquote>
+<hr />
+<p>CREATE WELL COLLECTIVE · LAS VEGAS · 2026 · <strong>FLOWING &gt; FORCING</strong></p>
+</body>
+</html>
