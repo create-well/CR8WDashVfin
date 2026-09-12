@@ -11,6 +11,7 @@ import {
 import { getStoredProfile } from '../app/components/AuthGate';
 import { shouldShowOnboarding } from '../app/components/WelcomeModal';
 import type { DashboardContextValue, DashboardPayload, SyncStatus } from '../types/dashboard';
+import { executeMutation, validateContentItemInput, validateTaskInput } from '../lib/mutationBoundary';
 
 const DEFAULT_STATIONS_MAPPED: Station[] = STATIONS_DEFAULT.map(s => ({
   ...s,
@@ -50,6 +51,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [mutationFeedback, setMutationFeedback] = useState<DashboardPayload['mutationFeedback']>({ status: 'idle' });
   const dataLoadedRef = useRef(false);
   const silentFailCount = useRef(0);
   const fetchSyncRef = useRef<((silent?: boolean) => Promise<void>) | undefined>(undefined);
@@ -223,22 +225,54 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     // Tasks
     async addTask(item: Omit<Task, 'id' | 'created_at'>) {
       try {
-        const created = await api.createTask(item);
-        setTasks(prev => [...prev, created]);
+        let created: Task | undefined;
+        await executeMutation({
+          action: 'task',
+          input: item,
+          validate: validateTaskInput,
+          applyOptimistic: () => () => {
+            if (created) setTasks(prev => prev.filter(task => task.id !== created?.id));
+          },
+          commit: async input => {
+            created = await api.createTask(input as Omit<Task, 'id' | 'created_at'>);
+            setTasks(prev => [...prev, created!]);
+          },
+          feedback: setMutationFeedback,
+        });
         const personLabel = item.person ? item.person.charAt(0).toUpperCase() + item.person.slice(1) : 'Someone';
         sendSystemMessage(`[UPDATE] ⛲️ New Geyser task: "${item.title}" assigned to ${personLabel} (${item.priority} priority)`);
       } catch (e) { console.error('Add task error:', e); }
     },
     async updateTask(id: number, updates: Partial<Task>) {
       try {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
-        await api.updateTask(id, updates);
+        const previous = tasks.find(task => task.id === id);
+        await executeMutation({
+          action: 'task',
+          input: updates,
+          validate: validateTaskInput,
+          applyOptimistic: () => {
+            setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+            return () => setTasks(prev => previous ? prev.map(t => t.id === id ? previous : t) : prev);
+          },
+          commit: input => api.updateTask(id, input),
+          feedback: setMutationFeedback,
+        });
       } catch (e) { console.error('Update task error:', e); }
     },
     async updateTaskStatus(id: number, status: Task['status']) {
       try {
-        setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
-        await api.updateTask(id, { status });
+        const previous = tasks.find(task => task.id === id);
+        await executeMutation({
+          action: 'task status',
+          input: { status },
+          validate: validateTaskInput,
+          applyOptimistic: () => {
+            setTasks(prev => prev.map(t => t.id === id ? { ...t, status } : t));
+            return () => setTasks(prev => previous ? prev.map(t => t.id === id ? previous : t) : prev);
+          },
+          commit: input => api.updateTask(id, input),
+          feedback: setMutationFeedback,
+        });
       } catch (e) { console.error('Update task status error:', e); }
     },
     async deleteTask(id: number) {
@@ -291,9 +325,18 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     },
     async updateForumPost(id: number, updates: Partial<ForumPost>) {
       try {
-        setForum(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-        const updated = await api.updateForumPost(id, updates);
-        setForum(prev => prev.map(p => p.id === id ? updated : p));
+        const previous = forum.find(post => post.id === id);
+        await executeMutation({
+          action: 'content item',
+          input: updates,
+          validate: validateContentItemInput,
+          applyOptimistic: () => {
+            setForum(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+            return () => setForum(prev => previous ? prev.map(p => p.id === id ? previous : p) : prev);
+          },
+          commit: input => api.updateForumPost(id, input),
+          feedback: setMutationFeedback,
+        });
         const authorLabel = updates.author || forum.find(p => p.id === id)?.author || 'Someone';
         sendSystemMessage(`[UPDATE] ✏️ ${authorLabel.charAt(0).toUpperCase() + authorLabel.slice(1)} edited a post in The Well`);
       } catch (e) { console.error('Update forum post error:', e); }
@@ -556,6 +599,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     permissions: {
       careConsent: true,
     },
+    mutationFeedback,
   };
 
   const ui = {

@@ -3,6 +3,7 @@ import type {
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
   CoFlowDate, CoFlowCheckin, WellNote,
 } from '../app/components/api';
+import type { MutationStatus } from '../lib/mutationBoundary';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
@@ -11,6 +12,11 @@ export type {
 };
 
 export type SyncStatus = 'loading' | 'fresh' | 'stale' | 'failed';
+
+export interface MutationFeedback {
+  status: MutationStatus;
+  message?: string;
+}
 
 export interface DashboardPermissions {
   careConsent: boolean;
@@ -33,6 +39,7 @@ export interface DashboardPayload {
   syncStatus: SyncStatus;
   lastSynced: Date | null;
   permissions: DashboardPermissions;
+  mutationFeedback: MutationFeedback;
 }
 
 export interface DashboardActions {
