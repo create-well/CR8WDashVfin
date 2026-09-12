@@ -157,7 +157,7 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
         setCalendarEvents(data.calendarEvents || []);
-        setCalendarSync(data.calendarSync);
+        if (data.calendarSync) setCalendarSync(data.calendarSync);
         setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
