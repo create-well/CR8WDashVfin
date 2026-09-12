@@ -10,7 +10,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { CalendarSyncError, syncCalendarIcal } from '../calendar-ical-sync.js';
-import { deriveCalendarSyncState } from '../calendar-sync-health.js';
+import {
+  CALENDAR_SYNC_META_KEY,
+  deriveCalendarSyncState,
+} from '../calendar-sync-health.js';
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 function sb() {
@@ -31,13 +34,9 @@ async function verifyRequest(req: VercelRequest): Promise<boolean> {
   // JWT path: verify as a Supabase user access token
   if (pubKey) {
     try {
-      const response = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
-        headers: {
-          apikey: pubKey,
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) return true;
+      const c = createClient(process.env.SUPABASE_URL!, pubKey, { auth: { persistSession: false } });
+      const { data, error } = await c.auth.getUser(token);
+      if (!error && data.user) return true;
     } catch { /* fall through */ }
   }
   return !pubKey; // allow when no key configured (dev/preview)
@@ -60,86 +59,8 @@ function parseList(raw: any): any[] {
   try { return typeof raw === 'string' ? JSON.parse(raw) : Array.isArray(raw) ? raw : []; }
   catch { return []; }
 }
-function parseObject(raw: any): Record<string, any> {
-  if (!raw) return {};
-  try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch { return {}; }
-}
 async function getList(key: string): Promise<any[]> { return parseList(await kvGet(key)); }
 async function setList(key: string, list: any[]): Promise<void> { await kvSet(key, JSON.stringify(list)); }
-
-const NOTION_SOURCES = {
-  people: 'b97bcbdf-2b1b-488d-9d07-4012b031732e',
-  flows: 'c1677843-dd13-4e37-9f80-e960b26847dc',
-  moves: '5597e583-f7df-4f6c-90b0-296a26c57454',
-  content: 'cd410d33-8052-4897-8226-3a3ca84ea8bc',
-  money: '55832c19-38fa-44cb-b4c2-0174b4c5b207',
-} as const;
-
-type NotionProperty = Record<string, any>;
-
-function notionValue(property: NotionProperty): unknown {
-  if (!property || !property.type) return null;
-  const value = property[property.type];
-  if (property.type === 'title' || property.type === 'rich_text') {
-    return (value ?? []).map((item: any) => item.plain_text ?? item.text?.content ?? '').join('');
-  }
-  if (property.type === 'select' || property.type === 'status') return value?.name ?? null;
-  if (property.type === 'multi_select') return (value ?? []).map((item: any) => item.name);
-  if (property.type === 'date') return value ? { start: value.start ?? null, end: value.end ?? null, time_zone: value.time_zone ?? null } : null;
-  if (property.type === 'people') return (value ?? []).map((item: any) => item.id);
-  if (property.type === 'relation') return (value ?? []).map((item: any) => item.id);
-  if (property.type === 'unique_id') return value ? `${value.prefix ?? ''}${value.number ?? ''}` : null;
-  if (property.type === 'formula') return value?.[value.type] ?? null;
-  if (property.type === 'rollup') return value?.type === 'array' ? value.array : value?.[value.type] ?? null;
-  return value ?? null;
-}
-
-function normalizeNotionPage(page: any, source: string) {
-  const properties = Object.fromEntries(
-    Object.entries(page.properties ?? {}).map(([name, property]) => [name, notionValue(property as NotionProperty)]),
-  );
-  return {
-    source,
-    sourcePageId: page.id,
-    sourceUrl: page.url ?? null,
-    sourceLastEditedAt: page.last_edited_time ?? null,
-    archived: Boolean(page.archived),
-    properties,
-  };
-}
-
-async function notionRequest(path: string, options: RequestInit = {}): Promise<any> {
-  const token = process.env.NOTION_API_KEY;
-  if (!token) throw new Error('Missing NOTION_API_KEY');
-  const response = await fetch(`https://api.notion.com/v1${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Notion-Version': '2025-09-03',
-      'Content-Type': 'application/json',
-      ...(options.headers ?? {}),
-    },
-  });
-  if (!response.ok) throw new Error(`Notion request failed with status ${response.status}`);
-  return response.json();
-}
-
-async function fetchNotionSource(source: string, dataSourceId: string) {
-  const pages: any[] = [];
-  let cursor: string | undefined;
-  do {
-    const result = await notionRequest(`/data_sources/${dataSourceId}/query`, {
-      method: 'POST',
-      body: JSON.stringify({ page_size: 100, ...(cursor ? { start_cursor: cursor } : {}) }),
-    });
-    pages.push(...(result.results ?? []).map((page: any) => normalizeNotionPage(page, source)));
-    cursor = result.has_more ? result.next_cursor ?? undefined : undefined;
-  } while (cursor);
-  return pages;
-}
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 function cors(res: VercelResponse) {
@@ -184,66 +105,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.json({ status: 'ok', runtime: 'vercel' }); return;
     }
 
-    // ── Notion mirror ─────────────────────────────────────────────────────────
-    // Dry-run is the safe default. This endpoint never writes legacy operational keys.
-    if (resource === 'notion-sync' && method === 'POST') {
-      const request = await readBody(req);
-      const dryRun = request?.dryRun !== false;
-      const runId = `notion-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
-      const snapshots: Record<string, any[]> = {};
-      let recordsSeen = 0;
-      let latestSourceEdit: string | null = null;
-
-      for (const [source, dataSourceId] of Object.entries(NOTION_SOURCES)) {
-        const records = await fetchNotionSource(source, dataSourceId);
-        snapshots[source] = records;
-        recordsSeen += records.length;
-        for (const record of records) {
-          if (!record.sourceLastEditedAt || (latestSourceEdit && record.sourceLastEditedAt <= latestSourceEdit)) continue;
-          latestSourceEdit = record.sourceLastEditedAt;
-        }
-      }
-
-      const counts = Object.fromEntries(Object.entries(snapshots).map(([source, records]) => [source, records.length]));
-      if (!dryRun) {
-        for (const [source, records] of Object.entries(snapshots)) {
-          await kvSet(`cr8w_notion_mirror_${source}`, JSON.stringify(records));
-        }
-        await kvSet('cr8w_notion_sync_meta', JSON.stringify({
-          source: 'notion',
-          mirrorUpdatedAt: new Date().toISOString(),
-          sourceLastEditedAt: latestSourceEdit,
-          syncRunId: runId,
-          counts,
-        }));
-      }
-
-      res.json({
-        ok: true,
-        dryRun,
-        runId,
-        recordsSeen,
-        counts,
-        latestSourceEdit,
-        writes: dryRun ? 0 : Object.keys(snapshots).length + 1,
-      });
-      return;
-    }
-
     // ── Sync ──────────────────────────────────────────────────────────────────
     if (resource === 'sync' && method === 'GET') {
       const KEYS = [
         'cr8w_tasks','cr8w_stations','cr8w_forum','cr8w_messages',
         'cr8w_braindumps','cr8w_announcements','cr8w_forum_replies',
         'cr8w_workshops','cr8w_workshop_programs','cr8w_workshop_resources',
-        'cr8w_coflow_dates','cr8w_coflow_checkins','cr8w_well_notes','cr8w_calendar_events',
-        'cr8w_notion_sync_meta',
+        'cr8w_coflow_dates','cr8w_coflow_checkins','cr8w_well_notes',
+        'cr8w_calendar_events', CALENDAR_SYNC_META_KEY,
       ];
       const { data, error } = await sb().from(TABLE).select('key,value').in('key', KEYS);
       if (error) { res.status(500).json({ error: error.message }); return; }
       const m: Record<string, any[]> = {};
-      for (const row of data ?? []) if (row.key !== 'cr8w_notion_sync_meta') m[row.key] = parseList(row.value);
-      const syncMeta = parseObject(data?.find(row => row.key === 'cr8w_notion_sync_meta')?.value);
+      let calendarMetadata: unknown = null;
+      for (const row of data ?? []) {
+        if (row.key === CALENDAR_SYNC_META_KEY) calendarMetadata = row.value;
+        else m[row.key] = parseList(row.value);
+      }
+      const calendarEvents = m['cr8w_calendar_events'] ?? [];
       res.json({
         tasks: m['cr8w_tasks']??[], stations: m['cr8w_stations']??[],
         forum: m['cr8w_forum']??[], messages: m['cr8w_messages']??[],
@@ -251,13 +130,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         forumReplies: m['cr8w_forum_replies']??[], workshops: m['cr8w_workshops']??[],
         workshopPrograms: m['cr8w_workshop_programs']??[], workshopResources: m['cr8w_workshop_resources']??[],
         coflowDates: m['cr8w_coflow_dates']??[], coflowCheckins: m['cr8w_coflow_checkins']??[],
-        wellNotes: m['cr8w_well_notes']??[], calendarEvents: m['cr8w_calendar_events']??[],
-        freshness: {
-          source: syncMeta.source === 'notion' ? 'notion' : 'unknown',
-          mirrorUpdatedAt: typeof syncMeta.mirrorUpdatedAt === 'string' ? syncMeta.mirrorUpdatedAt : null,
-          sourceLastEditedAt: typeof syncMeta.sourceLastEditedAt === 'string' ? syncMeta.sourceLastEditedAt : null,
-          syncRunId: typeof syncMeta.syncRunId === 'string' ? syncMeta.syncRunId : null,
-        },
+        wellNotes: m['cr8w_well_notes']??[], calendarEvents,
+        calendarSync: deriveCalendarSyncState({
+          configured: Boolean(process.env.CR8W_ICAL_URL),
+          metadata: calendarMetadata,
+          recordCount: calendarEvents.length,
+        }),
       });
       return;
     }
@@ -354,11 +232,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 
     // ── iCal Calendar Sync ────────────────────────────────────────────────────
-    // POST /calendar-ical-sync  — fetches CR8W_ICAL_URL, parses VEVENTs, stores
+    // POST /calendar-ical-sync — fetches CR8W_ICAL_URL, parses VEVENTs, stores
     if (resource === 'calendar-ical-sync' && method === 'POST') {
       try {
         const result = await syncCalendarIcal(process.env.CR8W_ICAL_URL, {
-          fetchCalendar: (url) => fetch(url),
+          fetchCalendar: url => fetch(url),
           readValue: kvGet,
           writeValue: kvSet,
         });
@@ -376,10 +254,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (error) {
         if (error instanceof CalendarSyncError) {
           console.error('[ical-sync]', error.code);
-          res.status(error.httpStatus).json({
-            error: error.message,
-            errorCode: error.code,
-          });
+          res.status(error.httpStatus).json({ error: error.message, errorCode: error.code });
           return;
         }
         console.error('[ical-sync]', 'unknown');

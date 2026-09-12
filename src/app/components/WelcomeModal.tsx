@@ -63,7 +63,7 @@ const IPHONE_STEPS = [
     num: '1',
     text: (
       <>
-        Open <strong>www.cr8w.com</strong> in{' '}
+        Open <strong>createwell.monnyfest.co</strong> in{' '}
         <strong>Safari</strong> on your iPhone
       </>
     ),

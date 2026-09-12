@@ -6,7 +6,15 @@ import { VisibilityDial } from './VisibilityDial';
 import { SensorySettings } from './SensorySettings';
 import { ThemeSelector } from './ThemeSelector';
 import { useDashboard } from '../../contexts/DashboardContext';
-import { NAV_ITEMS } from './navItems';
+
+const NAV_ITEMS: { path: string; label: string; emoji: string; end?: boolean }[] = [
+  { path: '/',           label: 'This Week', emoji: '💧', end: true },
+  { path: '/moves',      label: 'Moves',     emoji: '⛲️' },
+  { path: '/care',       label: 'Care',      emoji: '🫧' },
+  { path: '/money',      label: 'Money',     emoji: '💰' },
+  { path: '/decisions',  label: 'Decisions', emoji: '⚡' },
+  { path: '/system',     label: 'System',    emoji: '🔧' },
+];
 
 const CO_FOUNDERS = Object.entries(PERSONS) as [string, typeof PERSONS[keyof typeof PERSONS]][];
 

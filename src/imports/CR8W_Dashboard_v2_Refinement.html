@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CR8W Dashboard v2 Refinement</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700&family=Fredoka:wght@400;500;600&family=Montserrat:wght@400;500;600;700&display=swap');
+
+:root {
+  --deep-rust: #C25B38;
+  --clay-velour: #E8AF93;
+  --peach-haze: #FFDEC2;
+  --camel-sun: #D4A771;
+  --sandstone: #EAE3DB;
+  --deep-black: #101010;
+  --sage: #8FA090;
+  --text-dark: #352d28;
+  --text-muted: #a69a8f;
+  --line: #ddd4ca;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Montserrat', 'Inter', 'Helvetica Neue', sans-serif;
+  font-weight: 400;
+  line-height: 1.75;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 28px;
+  color: var(--text-dark);
+  background: #faf9f5;
+  font-size: 15px;
+}
+
+/* Display — Fredoka for large brand moments */
+h1 {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 500;
+  color: var(--deep-rust);
+  border-bottom: 3px solid var(--deep-rust);
+  padding-bottom: 16px;
+  font-size: 2.4em;
+  margin-top: 0;
+  letter-spacing: 0.01em;
+}
+
+/* Headings — Blinker uppercase for section headers */
+h2 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--deep-rust);
+  margin-top: 48px;
+  font-size: 1.35em;
+  border-left: 4px solid var(--peach-haze);
+  padding-left: 16px;
+}
+
+h3 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--clay-velour);
+  margin-top: 32px;
+  font-size: 1.1em;
+}
+
+h4 {
+  font-family: 'Blinker', sans-serif;
+  font-weight: 600;
+  color: var(--deep-rust);
+  margin-top: 24px;
+  font-size: 1em;
+}
+
+p {
+  margin: 0 0 1em 0;
+}
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 24px 0;
+  font-size: 0.92em;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th {
+  background: var(--deep-rust);
+  color: var(--sandstone);
+  font-family: 'Blinker', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+tr:nth-child(even) { background: rgba(234, 227, 219, 0.4); }
+tr:hover { background: rgba(255, 222, 194, 0.3); }
+
+/* Blockquotes — the well notes */
+blockquote {
+  background: linear-gradient(135deg, var(--sandstone) 0%, var(--peach-haze) 100%);
+  border-left: 4px solid var(--deep-rust);
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: var(--text-dark);
+}
+
+blockquote p { margin: 0; }
+blockquote p + p { margin-top: 0.8em; }
+
+/* Code */
+code {
+  background: var(--sandstone);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.9em;
+  color: var(--deep-rust);
+}
+
+pre {
+  background: var(--deep-black);
+  color: var(--sandstone);
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* Lists */
+ul, ol {
+  margin: 16px 0;
+  padding-left: 28px;
+}
+
+li { margin: 8px 0; }
+
+/* Links */
+a {
+  color: var(--deep-rust);
+  text-decoration: none;
+  border-bottom: 1px solid var(--clay-velour);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+a:hover {
+  color: var(--clay-velour);
+  border-bottom-color: var(--deep-rust);
+}
+
+/* Horizontal rule */
+hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, var(--deep-rust), var(--peach-haze), var(--sandstone));
+  margin: 40px 0;
+  border-radius: 1px;
+}
+
+/* Strong & Em */
+strong { color: var(--deep-rust); font-weight: 700; }
+em { color: var(--clay-velour); font-style: italic; }
+
+/* Print-friendly */
+@media print {
+  body { background: white; padding: 20px; max-width: 100%; }
+  h1 { font-size: 1.8em; }
+  h2 { font-size: 1.1em; }
+}
+</style>
+</head>
+<body>
+<h1>CR8W Dashboard v2 — Refinement &amp; Usage Specification</h1>
+<blockquote>
+<p><em>The dashboard is the riverbank. It holds the current so the team doesn&rsquo;t have to think about where to go.</em><br />
+CREATE WELL COLLECTIVE · LAS VEGAS · 2026</p>
+</blockquote>
+<hr />
+<h2>Current State Assessment</h2>
+<p>The v1 dashboard (Figma + live at <code>cr8w.overtinkr.com</code>) has strong visual bones and the right metaphorical language. What&rsquo;s missing is <strong>functional depth</strong> — the dashboard is a beautiful shell with no live data, no clear ownership, and no connection to the team&rsquo;s actual operating rhythm.</p>
+<h3>What Works</h3>
+<ul>
+<li>The mood check-in (<code>flowing / foggy / fired up</code>) — a somatic entry point</li>
+<li>The greeting by name — personal, warm</li>
+<li>The stats card grid (Moves, Stations, Guests, Team) — the right nouns for a retreat/workshop collective</li>
+<li>The brand palette (Deep Rust, Sandstone, Peach Haze, Clay Velour, Camel Sun) — consistent across the whole experience, now mapped to the official 2025 brand board hexes</li>
+<li>The tab architecture (THE WELL, WORKSHOPS, GEYSER, PLAYGROUND, CO-FLOW) — the metaphors are correct</li>
+</ul>
+<h3>What Needs Tending</h3>
+<ul>
+<li>All stats read <code>0</code> — no data plumbing</li>
+<li>Calendar shows a cookie-consent wall, not events</li>
+<li>Tools are static icons, not connected links</li>
+<li>MBody is a &ldquo;SPIN&rdquo; button with no backend</li>
+<li>&ldquo;Notes from the well&rdquo; is two cards, not a knowledge base</li>
+<li>No role visibility — who&rsquo;s Flow Keeper this week? Who&rsquo;s holding what?</li>
+<li>No weekly rhythm view — the Monday→Wednesday→Thursday→Friday flow is invisible</li>
+<li>No question bank access</li>
+<li>No Flowtainer links</li>
+<li>The dashboard doesn&rsquo;t know about the podcast, the retreat, or the workshop pipeline</li>
+</ul>
+<hr />
+<h2>v2 Design Principles</h2>
+<ol>
+<li><strong>Flow over force.</strong> Every element earns its place. If it doesn&rsquo;t serve a weekly decision, it goes.</li>
+<li><strong>The banks hold the water.</strong> The dashboard should make the operating rhythm <em>visible</em> — not just possible.</li>
+<li><strong>Three users, one view.</strong> Monny, Sunshine, and Bingle each see what they need without switching contexts.</li>
+<li><strong>Live data or nothing.</strong> A stat that reads <code>0</code> is worse than no stat. Connect it or hide it.</li>
+<li><strong>Metaphor is functional.</strong> &ldquo;The Well&rdquo; isn&rsquo;t just a name. It&rsquo;s where drops become knowledge.</li>
+</ol>
+<hr />
+<h2>v2 Information Architecture</h2>
+<h3>Top Navigation (retained, refined)</h3>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Purpose</th>
+<th>Primary User</th>
+<th>Live Data Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>THE WELL</strong></td>
+<td>Home / Overview / Today&rsquo;s Water</td>
+<td>All</td>
+<td>Local state + Google Calendar</td>
+</tr>
+<tr>
+<td><strong>WORKSHOPS</strong></td>
+<td>Workshop pipeline &amp; station planning</td>
+<td>Sunshine / Bingle</td>
+<td>Airtable / Google Sheets</td>
+</tr>
+<tr>
+<td><strong>GEYSER</strong></td>
+<td>Task eruption &amp; ops flow</td>
+<td>Monny</td>
+<td>Trello / Notion / Custom DB</td>
+</tr>
+<tr>
+<td><strong>PLAYGROUND</strong></td>
+<td>MBody, experiments, joy tools</td>
+<td>Bingle</td>
+<td>Local wellness tracker</td>
+</tr>
+<tr>
+<td><strong>CO-FLOW</strong></td>
+<td>Team alignment, roles, HD protocol</td>
+<td>All</td>
+<td>Shared doc / Notion</td>
+</tr>
+</tbody>
+</table>
+<p><em>Note: The active tab uses a Deep Rust underline + subtle glow. Inactive tabs use Sandstone text on the sage gradient header.</em></p>
+<hr />
+<h2>THE WELL Tab — Home Screen (Refined)</h2>
+<h3>1. Mood Check-In (retained, enhanced)</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│  [well, hello.]  /  [well rested? let's     │
+│   create.]  /  [well aware you'd be back.]  │
+│                                             │
+│  [🌊 flowing]  [🌫 foggy]  [🔥 fired up]   │
+│            [skip]                           │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Enhancement:</strong> The mood selection now writes to a simple log (Google Sheet or local JSON). Over time, the team sees patterns: <em>&ldquo;Monny&rsquo;s been foggy three Wednesdays in a row. Check the sacral.&rdquo;</em></p>
+<p><strong>HD Integration:</strong><br />
+- Sunshine (MG): Her mood is often &ldquo;fired up&rdquo; by default. The dashboard flags when she&rsquo;s <em>not</em> — that&rsquo;s data.<br />
+- Monny (Generator): Her mood is her sacral. If she clicks &ldquo;foggy&rdquo; on a recording day, the Flow Keeper sees it.<br />
+- Bingle (Projector): Her mood is environmental. If she&rsquo;s &ldquo;foggy,&rdquo; the room needs an invitation, not a push.</p>
+<hr />
+<h3>2. Daily Greeting (retained, enhanced)</h3>
+<pre><code>👋 Good morning, [Name]          Thursday, June 24  [Share Link]
+</code></pre>
+<p><strong>Enhancement:</strong> The greeting now rotates through a bank of 12 opening lines (chosen by the week&rsquo;s Flow Keeper). The current list:</p>
+<ol>
+<li>&ldquo;well, hello.&rdquo;</li>
+<li>&ldquo;well rested? let&rsquo;s create.&rdquo;</li>
+<li>&ldquo;well aware you&rsquo;d be back.&rdquo;</li>
+<li>&ldquo;the water&rsquo;s warm today.&rdquo;</li>
+<li>&ldquo;drop in. the banks are loose.&rdquo;</li>
+<li>&ldquo;what&rsquo;s moving?&rdquo;</li>
+<li>&ldquo;your well is glad to see you.&rdquo;</li>
+<li>&ldquo;show up, drop in, let it move.&rdquo;</li>
+<li>&ldquo;the river keeps running.&rdquo;</li>
+<li>&ldquo;what are you carrying in?&rdquo;</li>
+<li>&ldquo;good morning, well-dweller.&rdquo;</li>
+<li>&ldquo;let&rsquo;s make the thing.&rdquo;</li>
+</ol>
+<hr />
+<h3>3. Role Banner (NEW)</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│  THIS WEEK'S DROP (Episode 4)               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ Flow     │ │ Closer   │ │ Benediction│  │
+│  │ Keeper   │ │          │ │            │  │
+│  │ ☀️ Sunshine│ │ 🌙 Bingle │ │ 🌊 Monny    │  │
+│  └──────────┘ └──────────┘ └──────────┘   │
+│  Topic: [What does Create Well mean...]     │
+│  Recording: Wednesday, June 25 · 7pm         │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Why this matters:</strong> The v1 dashboard has no role visibility. The Flowtainer rotates roles, but the dashboard doesn&rsquo;t know. This banner pulls from a shared Role Rotation Matrix (see Operations Flowtainers). It answers the question <em>&ldquo;Who&rsquo;s holding the well this week?&rdquo;</em> before anyone has to ask.</p>
+<p><strong>HD Safety:</strong> If Bingle is Flow Keeper, the banner adds a small note: <em>&ldquo;Bingle is holding the banks by invitation.&rdquo;</em> This honors her Projector strategy in the interface itself.</p>
+<hr />
+<h3>4. Stats Cards (refined, connected)</h3>
+<p>The v1 stats are all <code>0</code>. In v2, each card connects to a real data source and shows <strong>what matters this week</strong>.</p>
+<pre><code>┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│ 📋 Moves     │  │ 📍 Stations  │  │ 🌊 Guests    │  │ 👥 Team      │
+│ 3 in motion  │  │ 4 of 6 ready │  │ 12 confirmed │  │ 3 aligned    │
+│ this week    │  │ for retreat  │  │ of 37 invited│  │              │
+└──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘
+</code></pre>
+<p><strong>Data Sources:</strong><br />
+- <strong>Moves:</strong> Pulled from GEYSER task list — active tasks assigned to the viewer<br />
+- <strong>Stations:</strong> Pulled from WORKSHOPS tab — workshop/retreat station readiness<br />
+- <strong>Guests:</strong> Pulled from invite list (Google Sheet or Airtable) — RSVP status<br />
+- <strong>Team:</strong> Pulled from CO-FLOW — who&rsquo;s checked in, who&rsquo;s carrying what</p>
+<p><strong>Click behavior:</strong> Each card expands to a mini-view of its domain. No navigation required for a quick scan.</p>
+<hr />
+<h3>5. Weekly Rhythm Strip (NEW)</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────────────┐
+│  THE RIVER THIS WEEK                                                │
+│  Mon · Cohoe-lite    Wed · The Weeecording    Thu · Decomprocessing│
+│  🟢 Done              🟡 Tomorrow              ⚪ Upcoming          │
+│  Fri · Edit            Mon · Depanty                                   │
+│  ⚪ Upcoming            ⚪ Upcoming                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Why this matters:</strong> The operating system is invisible in v1. The weekly rhythm strip makes the Monday→Wednesday→Thursday→Friday→Monday flow <strong>visible at a glance</strong>. Each dot is clickable and shows the next action for that phase.</p>
+<p><strong>HD Integration:</strong><br />
+- Monday: Sunshine proposes, Monny responds, Bingle waits for invitation<br />
+- Wednesday: The recording day — the banner shows the Flow Keeper&rsquo;s name in Deep Rust<br />
+- Thursday: Decomprocessing — the strip shows who hasn&rsquo;t checked in<br />
+- Friday: Edit — the strip shows Sunshine&rsquo;s edit queue<br />
+- Monday (next): Depanty — the strip shows Monny&rsquo;s downstream tasks</p>
+<hr />
+<h3>6. Live Calendar (replaced cookie wall)</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│  UPCOMING DROPS                    [Open]   │
+│  ┌─────────────────────────────────────┐    │
+│  │ Jun 25 · 🎙 Heritage Couture Encore  │    │
+│  │ Jun 27 · 🔬 Kwentuhan (Research)     │    │
+│  │ Jul 1  · 🎉 MONNNNEWYORK Pop-Up      │    │
+│  └─────────────────────────────────────┘    │
+│  [+ Add Drop]                               │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Implementation:</strong> Replace the embedded Google Calendar iframe with a <strong>read-only event list</strong> pulled from a shared Google Calendar. The calendar is still the source of truth, but the dashboard shows only CR8W events (filtered by calendar name). The &ldquo;+ Add Drop&rdquo; button opens a simple form that writes to the shared calendar.</p>
+<p><strong>No cookie wall.</strong> The dashboard server fetches calendar data (via API or periodic sync) and renders it. The user never sees a Google auth prompt in the dashboard itself.</p>
+<hr />
+<h3>7. Tools Grid (refined, connected)</h3>
+<pre><code>┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  📋 Invite List  │  │  📍 Stations     │  │  📁 CW Drive     │
+│  37 invited      │  │  6 stations      │  │  Open folder     │
+│  12 confirmed    │  │  4 ready         │  │                  │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
+┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  📧 Gmail        │  │  📅 Google Cal   │  │  🎙 The Flowtainer│
+│  [Open inbox]    │  │  [Open calendar] │  │  [Open template] │
+└──────────────────┘  └──────────────────┘  └──────────────────┘
+</code></pre>
+<p><strong>Enhancement:</strong> The Tools grid now has <strong>live status</strong> on the internal tools (Invite List, Stations) and <strong>quick-open links</strong> on the external tools (Gmail, Calendar, Flowtainer). The Flowtainer card is new — it&rsquo;s the team&rsquo;s most-used document and it wasn&rsquo;t reachable from the dashboard in v1.</p>
+<hr />
+<h3>8. MBody Module (refined, functional)</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│  🧘 MBody · your body is trying to tell you something │
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │  🎰 SPIN                            │    │
+│  │  breathwork · movement · eating     │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  Last spin: June 22 · breathwork (4 min)   │
+│  [View history]  [Set reminder]            │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Enhancement:</strong> The SPIN button now writes to a log. The module shows:<br />
+- What you spun last<br />
+- How long you practiced<br />
+- A streak counter (if you want it — optional, no guilt)<br />
+- A reminder setter</p>
+<p><strong>HD Integration:</strong><br />
+- Sunshine (MG): She may spin multiple times a day. The log shows variety, not just streaks.<br />
+- Monny (Generator): She needs the full practice. The timer helps her stay in it.<br />
+- Bingle (Projector): She may not spin every day. The module celebrates her <em>discernment</em>, not her consistency.</p>
+<hr />
+<h3>9. Notes from the Well (expanded, functional)</h3>
+<pre><code>┌─────────────────────────────────────────────┐
+│  💧 notes from the well                     │
+│                                             │
+│  ┌──────────────┐  ┌──────────────────────┐ │
+│  │ THE WELL     │  │ THE SPRING           │ │
+│  │              │  │                      │ │
+│  │ [Drop a     │  │ &quot;the project you     │ │
+│  │  thought...]│  │  keep avoiding?      │ │
+│  │              │  │  it's not resistance.│ │
+│  │ [drop it in] │  │  it's respect...&quot;    │ │
+│  │              │  │ [this landed] [pull another]│
+│  └──────────────┘  └──────────────────────┘ │
+│                                             │
+│  [View all drops]  [View all springs]      │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Enhancement:</strong> The Well is now a <strong>functional drop box</strong>. Anyone on the team can type a thought and it saves to a shared doc (Google Doc, Notion, or simple DB). The Spring is a <strong>random quote/insight generator</strong> from a curated bank. &ldquo;This landed&rdquo; saves it to a favorites list. &ldquo;Pull another&rdquo; gets a new one.</p>
+<p><strong>Future:</strong> The drops become the seed for future questions, podcast topics, and workshop themes. The well literally fills from the bottom up.</p>
+<hr />
+<h3>10. Collective Synergy Footer (retained, linked)</h3>
+<pre><code>✨ Collective Synergy · ManiGen + Generator + Projector = Complete Creative Engine →
+</code></pre>
+<p><strong>Enhancement:</strong> The arrow now links to the <strong>CO-FLOW tab</strong> or the Human Design OS document. It&rsquo;s not just a slogan — it&rsquo;s a doorway.</p>
+<hr />
+<h2>WORKSHOPS Tab (New Content)</h2>
+<p>The v1 dashboard has a WORKSHOPS tab but no content. Here&rsquo;s what belongs there:</p>
+<pre><code>┌─────────────────────────────────────────────┐
+│  WORKSHOPS · The stations where we build    │
+│                                             │
+│  ACTIVE WORKSHOP                            │
+│  ┌─────────────────────────────────────┐    │
+│  │ Heritage Couture Encore             │    │
+│  │ Status: 🔴 In Motion · 4 of 6 stations ready│
+│  │ Date: Jun 25 · 12:00 am             │    │
+│  │ [View Station Map] [Edit Workshop]  │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  STATION MAP                                │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐    │
+│  │ Station 1│ │ Station 2│ │ Station 3│    │
+│  │ 🟢 Ready │ │ 🟡 WIP   │ │ 🔴 Blocked│   │
+│  │ Bingle   │ │ Sunshine │ │ Monny    │    │
+│  └──────────┘ └──────────┘ └──────────┘    │
+│                                             │
+│  WORKSHOP TEMPLATE                          │
+│  [Duplicate for new workshop]               │
+│                                             │
+│  PAST WORKSHOPS                             │
+│  [List of completed workshops with links]   │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Data Source:</strong> Airtable or Google Sheets with a workshop/station schema. Each station has an owner, a status, and a checklist.</p>
+<hr />
+<h2>GEYSER Tab (New Content)</h2>
+<p>The GEYSER is where tasks erupt. This is the ops center.</p>
+<pre><code>┌─────────────────────────────────────────────┐
+│  GEYSER · What needs to move                │
+│                                             │
+│  FILTER: [All] [Sunshine] [Monny] [Bingle] [Collective]│
+│                                             │
+│  🔴 HIGH · Edit Heritage Couture video      │
+│     Due: Friday · Owner: Sunshine           │
+│     Blocked by: DJI footage not synced      │
+│                                             │
+│  🟡 MEDIUM · Confirm 6 more guests          │
+│     Due: Monday · Owner: Monny              │
+│                                             │
+│  🟢 LOW · Update Substack header            │
+│     Due: Ongoing · Owner: Bingle            │
+│                                             │
+│  [+ Erupt New Task]                         │
+│                                             │
+│  COMPLETED THIS WEEK                        │
+│  ✓ Episode 3 edited and uploaded            │
+│  ✓ 12 guest confirmations received            │
+└─────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Data Source:</strong> A simple task DB (Notion, Trello, or Airtable). The &ldquo;erupt&rdquo; language keeps the metaphor alive without sacrificing clarity.</p>
+<p><strong>HD Integration:</strong><br />
+- Tasks are assigned by <strong>response and invitation</strong>, not by default.<br />
+- A task assigned to Monny shows a small sacral icon: <em>&ldquo;Check your gut before accepting.&rdquo;</em><br />
+- A task assigned to Bingle shows an invitation icon: <em>&ldquo;This task has been offered to you. Accept or redirect.&rdquo;</em></p>
+<hr />
+<h2>PLAYGROUND Tab (Refined)</h2>
+<p>The PLAYGROUND is where experiments live. MBody is here. So are joy tools.</p>
+<pre><code>┌─────────────────────────────────────────────┐
+│  PLAYGROUND · Joy, experiments, rest         │
+│                                             │
+│  🧘 MBody                                   │
+│  [SPIN module — same as home screen]         │
+│                                             │
+│  🎨 Joy Tools                               │
+│  [Random prompt generator]                   │
+│  [Creative warm-up (5 min)]                  │
+│  [The Question Bank]                         │
+│                                             │
+│  🧪 Experiments                               │
+│  DJI as backup cam — in trial                │
+│  Soft containers (6-8 min sip) — in trial  │
+│  Two questions max — adopted                 │
+│                                             │
+│  [Propose new experiment]                    │
+└─────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<h2>CO-FLOW Tab (New Content)</h2>
+<p>CO-FLOW is the team alignment center. It holds the Human Design protocol, the role rotation, and the operating agreements.</p>
+<pre><code>┌─────────────────────────────────────────────┐
+│  CO-FLOW · How we move together             │
+│                                             │
+│  THIS WEEK'S ROLES                          │
+│  [Role banner — same as home]                │
+│                                             │
+│  ROLE ROTATION MATRIX                       │
+│  [8-episode table — view full]               │
+│                                             │
+│  HUMAN DESIGN QUICK REFERENCE               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ ☀️ Sunshine│ │ 🌊 Monny    │ │ 🌙 Bingle  │   │
+│  │ MG 5/1   │ │ Gen 5/1   │ │ Proj 2/4 │   │
+│  │ Sacral   │ │ Sacral   │ │ Ego Proj │   │
+│  └──────────┘ └──────────┘ └──────────┘   │
+│  [View Full OS]                              │
+│                                             │
+│  THE QUESTION BANK                          │
+│  [20+ questions, categorized]              │
+│  [Add new question]                          │
+│                                             │
+│  OPERATING AGREEMENTS                       │
+│  [The Flowtainer] [Team Alignment] [Friction Map]│
+│  [How We Flow Reference]                     │
+└─────────────────────────────────────────────┘
+</code></pre>
+<hr />
+<h2>Implementation Priority</h2>
+<h3>Phase 1: The Banks (Week 1)</h3>
+<ul>
+<li>Connect the stats cards to real data sources</li>
+<li>Replace the calendar cookie wall with a live event list</li>
+<li>Add the Role Banner to the home screen</li>
+<li>Connect the Tools grid to actual links</li>
+</ul>
+<h3>Phase 2: The Current (Week 2)</h3>
+<ul>
+<li>Build the Weekly Rhythm Strip</li>
+<li>Functional MBody SPIN logger</li>
+<li>Functional Notes from the Well drop box</li>
+<li>Add the Flowtainer to the Tools grid</li>
+</ul>
+<h3>Phase 3: The Deep Water (Week 3-4)</h3>
+<ul>
+<li>Build out WORKSHOPS tab with station map</li>
+<li>Build out GEYSER tab with task management</li>
+<li>Build out CO-FLOW tab with HD reference</li>
+<li>Add the Question Bank to PLAYGROUND</li>
+</ul>
+<h3>Phase 4: The Reflection (Ongoing)</h3>
+<ul>
+<li>Mood check-in log + pattern visualization</li>
+<li>MBody history + streaks (optional)</li>
+<li>Well drops → question bank pipeline</li>
+<li>Team check-in reminders</li>
+</ul>
+<hr />
+<h2>Technical Notes</h2>
+<h3>Preferred Stack (Lightweight)</h3>
+<ul>
+<li><strong>Frontend:</strong> The existing React/Next.js setup (or simple HTML/CSS/JS if rebuilding)</li>
+<li><strong>Data Layer:</strong> Google Sheets API (for lightweight, team-editable data) or Airtable</li>
+<li><strong>Calendar:</strong> Google Calendar API (server-side fetch, no client auth)</li>
+<li><strong>Auth:</strong> Simple password gate (&ldquo;monnytinks&rdquo;) or shared login</li>
+<li><strong>Hosting:</strong> Vercel (existing) or Netlify</li>
+</ul>
+<h3>Why Google Sheets as the Database</h3>
+<ul>
+<li>The whole team can edit it without learning a new tool</li>
+<li>It&rsquo;s the source of truth for guest lists, station readiness, task status</li>
+<li>The dashboard reads from it; the team writes to it</li>
+<li>No custom CMS required</li>
+</ul>
+<h3>Sheet Structure (Suggested)</h3>
+<p><strong>Sheet 1: Guests</strong><br />
+| Name | Email | Status (Invited/Confirmed/Declined) | Workshop | Invited By | Date |</p>
+<p><strong>Sheet 2: Stations</strong><br />
+| Workshop | Station # | Name | Owner | Status (Ready/WIP/Blocked) | Notes |</p>
+<p><strong>Sheet 3: Tasks</strong><br />
+| Task | Owner | Priority | Due | Status | Blocked By | Tab |</p>
+<p><strong>Sheet 4: Roles</strong><br />
+| Episode | Flow Keeper | Closer | Benediction | Topic | Date |</p>
+<p><strong>Sheet 5: Mood Log</strong><br />
+| Name | Mood | Date | Notes |</p>
+<p><strong>Sheet 6: Well Drops</strong><br />
+| Drop | Author | Date | Status (Drop/Spring/Archived) |</p>
+<hr />
+<h2>Design Refinements (Visual)</h2>
+<ol>
+<li><strong>Card Hover States:</strong> Subtle Deep Rust shadow on hover, not a color shift. The cards feel tactile.</li>
+<li><strong>Empty States:</strong> When a stat is 0, show &ldquo;—&rdquo; instead of &ldquo;0.&rdquo; Zero reads as failure. &ldquo;—&rdquo; reads as &ldquo;not yet.&rdquo;</li>
+<li><strong>Loading States:</strong> Skeleton screens in Sandstone/Deep Rust gradient, not spinners. The well is filling.</li>
+<li><strong>Error States:</strong> &ldquo;The water is murky. Try again.&rdquo; Not &ldquo;Error 404.&rdquo; The metaphor holds even in failure.</li>
+<li><strong>Mobile:</strong> The card grid becomes a single column. The weekly rhythm strip becomes a swipeable carousel.</li>
+<li><strong>Dark Mode:</strong> Deep Black (#101010) background, Sandstone text, Deep Rust accents. The well at night.</li>
+</ol>
+<hr />
+<p><em>Flowing &gt; forcing. The dashboard is the riverbank. Build the banks so the water can move.</em></p>
+<p>CREATE WELL COLLECTIVE · LAS VEGAS · 2026 · <strong>FLOWING &gt; FORCING</strong></p>
+</body>
+</html>

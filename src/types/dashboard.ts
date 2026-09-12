@@ -1,15 +1,13 @@
 import type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote,
+  CoFlowDate, CoFlowCheckin, WellNote, CalendarEventKV, CalendarSyncState,
 } from '../app/components/api';
-import type { CalendarEventKV, CalendarSyncState, SyncFreshness } from '../app/components/api';
-import type { NotionMirrors, NotionSourceMetadata } from '../app/components/api';
 
 export type {
   Task, Station, ForumPost, ForumReply, Message, BrainDump,
   Announcement, Workshop, WorkshopProgram, WorkshopResource,
-  CoFlowDate, CoFlowCheckin, WellNote,
+  CoFlowDate, CoFlowCheckin, WellNote, CalendarEventKV, CalendarSyncState,
 };
 
 export type SyncStatus = 'loading' | 'fresh' | 'stale' | 'failed';
@@ -34,11 +32,8 @@ export interface DashboardPayload {
   wellNotes: WellNote[];
   calendarEvents: CalendarEventKV[];
   calendarSync: CalendarSyncState;
-  notionMirrors: NotionMirrors;
-  notionSources: NotionSourceMetadata[];
   syncStatus: SyncStatus;
   lastSynced: Date | null;
-  freshness: SyncFreshness;
   permissions: DashboardPermissions;
 }
 

@@ -4,7 +4,6 @@ import { useDashboard } from '../../contexts/DashboardContext';
 import { ViewShell } from '../components/ViewShell';
 import { HubView } from '../components/HubView';
 import { AddTaskModal } from '../components/AddTaskModal';
-import { NotionMirrorSummary } from '../components/NotionMirrorSummary';
 
 const VIEW_ROUTE_MAP: Record<string, string> = {
   hub: '/',
@@ -71,7 +70,6 @@ export function ThisWeekPage() {
         calendarSync={data.calendarSync}
         onCalendarRefresh={actions.retrySync}
       />
-      <NotionMirrorSummary mirrors={data.notionMirrors} freshness={data.freshness} sources={data.notionSources} />
       {showAddTask && (
         <AddTaskModal
           currentPerson={null}
