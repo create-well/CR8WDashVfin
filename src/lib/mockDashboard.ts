@@ -20,4 +20,7 @@ export const MOCK_PAYLOAD: DashboardPayload = {
   permissions: {
     careConsent: true,
   },
+  mutationFeedback: {
+    status: 'idle',
+  },
 };

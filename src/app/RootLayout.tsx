@@ -39,6 +39,34 @@ export function RootLayout() {
     <div className="cr8w-app" style={{ paddingBottom: '20px' }}>
       <TopNav onSignOut={actions.signOut} />
       <SyncStatusBar />
+      {data.mutationFeedback.status !== 'idle' && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            maxWidth: 760,
+            margin: '8px auto 0',
+            padding: '8px 14px',
+            borderRadius: 8,
+            background: data.mutationFeedback.status === 'failed'
+              ? 'rgba(196, 113, 113, 0.14)'
+              : 'rgba(123, 168, 157, 0.14)',
+            color: 'var(--cr8w-text, #2D2438)',
+            fontSize: '0.78rem',
+          }}
+        >
+          {data.mutationFeedback.message}
+          {data.mutationFeedback.status === 'failed' && (
+            <button
+              type="button"
+              onClick={actions.retrySync}
+              style={{ marginLeft: 8, border: 0, background: 'none', textDecoration: 'underline', cursor: 'pointer', color: 'inherit' }}
+            >
+              Retry sync
+            </button>
+          )}
+        </div>
+      )}
 
       {showDomainBanner && (
         <div style={{
