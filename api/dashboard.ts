@@ -29,6 +29,10 @@ import {
   type NotionPage,
 } from '../src/lib/notionNormalizer';
 import type { SyncData } from '../src/app/components/api';
+import {
+  CALENDAR_SYNC_META_KEY,
+  deriveCalendarSyncState,
+} from './calendar-sync-health.js';
 
 // ── Supabase KV helpers ───────────────────────────────────────────────────────
 
@@ -41,14 +45,18 @@ function supabaseClient() {
   return createClient(url, key);
 }
 
-async function kvGetList(key: string): Promise<unknown[]> {
+async function kvGetValue(key: string): Promise<unknown> {
   const { data, error } = await supabaseClient()
     .from(KV_TABLE)
     .select('value')
     .eq('key', key)
     .maybeSingle();
   if (error) throw new Error(`KV read error for "${key}": ${error.message}`);
-  const raw = data?.value;
+  return data?.value ?? null;
+}
+
+async function kvGetList(key: string): Promise<unknown[]> {
+  const raw = await kvGetValue(key);
   if (!raw) return [];
   try {
     if (Array.isArray(raw)) return raw;
@@ -149,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Fan-out: all Notion DB queries + all KV reads in parallel.
     // Missing env vars resolve to empty arrays — never a hard failure.
-    const [notionResults, kvResults] = await Promise.all([
+    const [notionResults, kvResults, calendarMetadata] = await Promise.all([
       Promise.all([
         secret && dbMoves   ? queryNotionDatabase(dbMoves, secret)   : Promise.resolve([]),
         secret && dbPeople  ? queryNotionDatabase(dbPeople, secret)  : Promise.resolve([]),
@@ -157,6 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         secret && dbContent ? queryNotionDatabase(dbContent, secret) : Promise.resolve([]),
       ]),
       Promise.all(KV_KEYS.map(k => kvGetList(k))),
+      kvGetValue(CALENDAR_SYNC_META_KEY),
     ]);
 
     const [movesPages, peoplePages, flowsPages, contentPages] = notionResults;
@@ -165,6 +174,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       workshops, workshopPrograms, workshopResources,
       coflowCheckins, wellNotes, calendarEvents,
     ] = kvResults;
+    const calendarSync = deriveCalendarSyncState({
+      configured: Boolean(process.env.CR8W_ICAL_URL),
+      metadata: calendarMetadata,
+      recordCount: calendarEvents.length,
+    });
 
     const payload: SyncData = {
       // Notion-backed
@@ -183,6 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       coflowCheckins:    coflowCheckins    as SyncData['coflowCheckins'],
       wellNotes:         wellNotes         as SyncData['wellNotes'],
       calendarEvents:    calendarEvents    as SyncData['calendarEvents'],
+      calendarSync,
     };
 
     cache = { payload, ts: Date.now() };

@@ -5,6 +5,7 @@ import * as api from '../app/components/api';
 import type { Task, Station, ForumPost, Message, BrainDump, Announcement, ForumReply } from '../app/components/api';
 import type { Workshop, WorkshopProgram, WorkshopResource } from '../app/components/api';
 import type { CoFlowDate, CoFlowCheckin, WellNote } from '../app/components/api';
+import type { CalendarEventKV, CalendarSyncState } from '../app/components/api';
 import {
   DEFAULT_ANNOUNCEMENTS, STATIONS_DEFAULT,
 } from '../app/components/data';
@@ -46,6 +47,15 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
   const [coFlowDates, setCoFlowDates] = useState<CoFlowDate[]>([]);
   const [coFlowCheckins, setCoFlowCheckins] = useState<CoFlowCheckin[]>([]);
   const [wellNotes, setWellNotes] = useState<WellNote[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEventKV[]>([]);
+  const [calendarSync, setCalendarSync] = useState<CalendarSyncState>({
+    configured: false,
+    status: 'not_configured',
+    lastAttemptAt: null,
+    lastSuccessfulSyncAt: null,
+    recordCount: 0,
+    stale: false,
+  });
 
   // ── Sync metadata ────────────────────────────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
@@ -146,6 +156,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
         setCoFlowDates(data.coflowDates || []);
         setCoFlowCheckins(data.coflowCheckins || []);
         setWellNotes(data.wellNotes || []);
+        setCalendarEvents(data.calendarEvents || []);
+        if (data.calendarSync) setCalendarSync(data.calendarSync);
         setSyncStatus('fresh');
         setLastSynced(new Date());
         silentFailCount.current = 0;
@@ -551,6 +563,8 @@ export function DashboardProvider({ children, onSignOut }: DashboardProviderProp
     coFlowDates,
     coFlowCheckins,
     wellNotes,
+    calendarEvents,
+    calendarSync,
     syncStatus: computedSyncStatus,
     lastSynced,
     permissions: {

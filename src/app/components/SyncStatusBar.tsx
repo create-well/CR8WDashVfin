@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '../../contexts/DashboardContext';
+import { calendarSyncLabel, calendarSyncNeedsAttention } from './calendarSyncPresentation';
 
 function relativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -20,7 +21,7 @@ const STATUS_CONFIG = {
 
 export function SyncStatusBar() {
   const { data, actions } = useDashboard();
-  const { syncStatus, lastSynced } = data;
+  const { syncStatus, lastSynced, calendarSync } = data;
   const [, setTick] = useState(0);
 
   // Refresh relative time every 30 seconds
@@ -31,8 +32,10 @@ export function SyncStatusBar() {
 
   const cfg = STATUS_CONFIG[syncStatus];
   const timeLabel = lastSynced ? `Last synced ${relativeTime(lastSynced)}` : 'Not yet synced';
+  const calendarNeedsAttention = calendarSyncNeedsAttention(calendarSync);
 
-  if (syncStatus === 'fresh' && lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
+  if (syncStatus === 'fresh' && !calendarNeedsAttention &&
+      lastSynced && Date.now() - lastSynced.getTime() < 60_000) {
     return null;
   }
 
@@ -65,6 +68,9 @@ export function SyncStatusBar() {
         }}
       />
       <span>{timeLabel}{cfg.label ? ` · ${cfg.label}` : ''}</span>
+      {calendarNeedsAttention && (
+        <span aria-label="Shared calendar status"> · {calendarSyncLabel(calendarSync)}</span>
+      )}
       {(syncStatus === 'failed' || syncStatus === 'stale') && (
         <button
           onClick={() => actions.retrySync()}

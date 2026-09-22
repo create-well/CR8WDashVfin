@@ -66,6 +66,9 @@ export function ThisWeekPage() {
         coFlowCheckins={data.coFlowCheckins}
         actionItems={data.tasks}
         stations={data.stations}
+        calendarEvents={data.calendarEvents}
+        calendarSync={data.calendarSync}
+        onCalendarRefresh={actions.retrySync}
       />
       {showAddTask && (
         <AddTaskModal
